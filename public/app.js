@@ -416,9 +416,9 @@ function anmeldungFuerOffline() {
   passwort.removeAttribute('required');
   $('#auth-submit').textContent = 'Garten anlegen';
   $('.auth-sub').innerHTML =
-    'Pflanze Blumen an echten Orten.<br>Dein Garten bleibt auf diesem Gerät.';
+    'Bau an echten Orten an.<br>Dein Garten bleibt auf diesem Gerät.';
   $('.auth-note').textContent =
-    'Ohne Server: Alles liegt in diesem Browser. Andere sehen deine Blumen nicht, '
+    'Ohne Server: Alles liegt in diesem Browser. Andere sehen deine Pflanzen nicht, '
     + 'dafür brauchst du kein Konto. Dein Standort verlässt das Gerät nicht.';
 }
 

@@ -79,19 +79,19 @@ async function fastForward(plantId, hours) {
 
 /**
  * Lässt eine Pflanze verdursten: lange nicht gegossen und als langsam
- * wachsende Sorte. Eine schnelle Sorte blüht im ersten Gießfenster ohnehin
- * auf und kann deshalb gar nicht verwelken.
+ * wachsende Sorte. Eine schnelle Sorte wird im ersten Gießfenster ohnehin
+ * erntereif und kann deshalb gar nicht verwelken.
  */
 async function letWither(plantId) {
   const lange = Date.now() - 72 * 3600_000;
   await admin.query(
-    `UPDATE plants SET species = 'rose', growth_ms = 0,
+    `UPDATE plants SET species = 'sativa', growth_ms = 0,
      planted_at = $1, last_watered_at = $1 WHERE id = $2`,
     [lange, plantId]);
 }
 
 /** Pflanzt für `token` auf dem ersten freien passenden Platz. */
-async function plantSomewhere(token, species = 'gaensebluemchen', soils = ['normal', 'fruchtbar', 'karg']) {
+async function plantSomewhere(token, species = 'feldhanf', soils = ['normal', 'fruchtbar', 'karg']) {
   for (const s of reachableSpots(soils)) {
     const res = await api('/api/action/plant', {
       token, method: 'POST', body: { cell: s.id, species, lat: LAT, lng: LNG },
@@ -126,43 +126,51 @@ test('Welt liefert Pflanzplätze und verlangt Anmeldung', async () => {
 
 test('Pflanzen prüft Entfernung, Boden und Samenbestand', async () => {
   const token = await register('Pflanzerin');
-  const [spot] = reachableSpots(['normal', 'fruchtbar']);
+  // Ruderalis verträgt kargen und normalen Boden -- der Platz muss dazu
+  // passen, sonst scheitert das Pflanzen an der Bodenregel statt am Geprüften.
+  const [spot] = reachableSpots(['karg', 'normal']);
   assert.ok(spot, 'Testort braucht einen erreichbaren Platz');
 
   const far = await api('/api/action/plant', {
-    token, method: 'POST', body: { cell: spot.id, species: 'tulpe', lat: 52.6, lng: LNG },
+    token, method: 'POST', body: { cell: spot.id, species: 'ruderalis', lat: 52.6, lng: LNG },
   });
   assert.equal(far.status, 403, 'aus der Ferne lässt sich nichts pflanzen');
 
   const fake = await api('/api/action/plant', {
-    token, method: 'POST', body: { cell: 'c:1:1', species: 'tulpe', lat: LAT, lng: LNG },
+    token, method: 'POST', body: { cell: 'c:1:1', species: 'ruderalis', lat: LAT, lng: LNG },
   });
   assert.equal(fake.status, 404, 'erfundene Zellen-IDs werden abgelehnt');
 
   const karg = reachableSpots(['karg'])[0];
   if (karg) {
     const wrongSoil = await api('/api/action/plant', {
-      token, method: 'POST', body: { cell: karg.id, species: 'sonnenblume', lat: LAT, lng: LNG },
+      token, method: 'POST', body: { cell: karg.id, species: 'sativa', lat: LAT, lng: LNG },
     });
     assert.equal(wrongSoil.status, 400);
     assert.match(wrongSoil.body.error, /fruchtbaren Boden/);
   }
 
   const ok = await api('/api/action/plant', {
-    token, method: 'POST', body: { cell: spot.id, species: 'tulpe', lat: LAT, lng: LNG },
+    token, method: 'POST', body: { cell: spot.id, species: 'ruderalis', lat: LAT, lng: LNG },
   });
   assert.equal(ok.status, 201, JSON.stringify(ok.body));
-  assert.equal(ok.body.me.inventory['seed:tulpe'], 1, 'ein Samen wurde abgezogen');
+  assert.equal(ok.body.me.inventory['seed:ruderalis'], 1, 'ein Samen wurde abgezogen');
 
   const twice = await api('/api/action/plant', {
-    token, method: 'POST', body: { cell: spot.id, species: 'tulpe', lat: LAT, lng: LNG },
+    token, method: 'POST', body: { cell: spot.id, species: 'ruderalis', lat: LAT, lng: LNG },
   });
   assert.equal(twice.status, 409, 'ein Platz trägt nur eine Pflanze');
 
-  const broke = await api('/api/action/plant', {
-    token, method: 'POST', body: { cell: reachableSpots(['normal', 'fruchtbar'])[1]?.id ?? spot.id, species: 'rose', lat: LAT, lng: LNG },
-  });
-  assert.equal(broke.status, 400, 'ohne Rosensamen geht nichts');
+  // Sativa braucht fruchtbaren Boden -- nur dort scheitert es wirklich am
+  // fehlenden Samen und nicht schon an der Bodenregel.
+  const fruchtbar = reachableSpots(['fruchtbar']).find((f) => f.id !== spot.id);
+  if (fruchtbar) {
+    const broke = await api('/api/action/plant', {
+      token, method: 'POST', body: { cell: fruchtbar.id, species: 'sativa', lat: LAT, lng: LNG },
+    });
+    assert.equal(broke.status, 400, 'ohne Sativa-Samen geht nichts');
+    assert.match(broke.body.error, /Samen/);
+  }
 });
 
 test('ein verfrühter Erntversuch zerstört die Pflanze nicht', async () => {
@@ -171,7 +179,7 @@ test('ein verfrühter Erntversuch zerstört die Pflanze nicht', async () => {
   let planted = null;
   for (const s of free) {
     const res = await api('/api/action/plant', {
-      token, method: 'POST', body: { cell: s.id, species: 'gaensebluemchen', lat: LAT, lng: LNG },
+      token, method: 'POST', body: { cell: s.id, species: 'feldhanf', lat: LAT, lng: LNG },
     });
     if (res.status === 201) { planted = res.body.plant; break; }
   }
@@ -205,7 +213,7 @@ test('Gießen: fremde Pflanzen geben XP, aber nur einmal', async () => {
   let planted = null;
   for (const s of reachableSpots(['normal', 'fruchtbar', 'karg'])) {
     const res = await api('/api/action/plant', {
-      token: owner, method: 'POST', body: { cell: s.id, species: 'gaensebluemchen', lat: LAT, lng: LNG },
+      token: owner, method: 'POST', body: { cell: s.id, species: 'feldhanf', lat: LAT, lng: LNG },
     });
     if (res.status === 201) { planted = res.body.plant; break; }
   }
@@ -290,7 +298,7 @@ test('verwelkte Pflanzen darf jeder wegräumen, ernten nur der Besitzer', async 
   assert.equal(spot.occupied, false, 'der Pflanzplatz ist wieder benutzbar');
 
   const neu = await api('/api/action/plant', {
-    token: fremder, method: 'POST', body: { cell: plant.cell, species: 'gaensebluemchen', lat: LAT, lng: LNG },
+    token: fremder, method: 'POST', body: { cell: plant.cell, species: 'feldhanf', lat: LAT, lng: LNG },
   });
   assert.equal(neu.status, 201, 'auf dem freigeräumten Platz lässt sich neu pflanzen');
 });
@@ -301,16 +309,16 @@ test('zwei gleichzeitige Pflanzversuche auf denselben Platz: einer gewinnt', asy
   assert.ok(spot, 'ein freier Platz muss sich finden lassen');
 
   const vorher = await api('/api/auth/me', { token });
-  const samenVorher = vorher.body.me.inventory['seed:gaensebluemchen'];
+  const samenVorher = vorher.body.me.inventory['seed:feldhanf'];
 
   // Beide Anfragen gehen gleichzeitig raus. Ohne Regel in der Datenbank
   // käme hier zweimal 201 heraus -- und der Samen wäre doppelt abgezogen.
   const [a, b] = await Promise.all([
     api('/api/action/plant', {
-      token, method: 'POST', body: { cell: spot.id, species: 'gaensebluemchen', lat: LAT, lng: LNG },
+      token, method: 'POST', body: { cell: spot.id, species: 'feldhanf', lat: LAT, lng: LNG },
     }),
     api('/api/action/plant', {
-      token, method: 'POST', body: { cell: spot.id, species: 'gaensebluemchen', lat: LAT, lng: LNG },
+      token, method: 'POST', body: { cell: spot.id, species: 'feldhanf', lat: LAT, lng: LNG },
     }),
   ]);
 
@@ -323,7 +331,7 @@ test('zwei gleichzeitige Pflanzversuche auf denselben Platz: einer gewinnt', asy
 
   const nachher = await api('/api/auth/me', { token });
   assert.equal(
-    nachher.body.me.inventory['seed:gaensebluemchen'], samenVorher - 1,
+    nachher.body.me.inventory['seed:feldhanf'], samenVorher - 1,
     'der fehlgeschlagene Versuch darf keinen Samen kosten',
   );
 });

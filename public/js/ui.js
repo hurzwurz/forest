@@ -106,7 +106,7 @@ export function spotDetail(spot, { katalog, me, spiel }) {
     const genug = habe >= art.seedCost;
     const grund = !passt ? 'Falscher Boden für diese Sorte'
       : !genug ? `Du brauchst ${art.seedCost} Samen (du hast ${habe})`
-      : `${art.growthH} Std. bis zur Blüte · ${art.yieldCoins} Münzen`;
+      : `${art.growthH} Std. bis zur Ernte · ${art.yieldCoins} Münzen`;
 
     liste.append(karte({
       emoji: art.emoji,
@@ -211,7 +211,7 @@ export function bagView(me, katalog) {
       rechts: `${anzahl}×`,
     }));
   }
-  box.append(leer ? el('p', 'empty', 'Keine Samen mehr. Ernte eine Blume — jede gibt neue Samen zurück.') : liste);
+  box.append(leer ? el('p', 'empty', 'Keine Samen mehr. Ernte eine Pflanze — jede gibt neue Samen zurück.') : liste);
   return box;
 }
 

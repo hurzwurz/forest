@@ -7,7 +7,7 @@
  *
  * Die Spielregeln kommen aus `shared/game.js`, also aus derselben Datei, die
  * auch der Server benutzt. Zwei Fassungen wären die sichere Quelle dafür, dass
- * eine Blume je nach Betriebsart unterschiedlich schnell wächst.
+ * eine Pflanze je nach Betriebsart unterschiedlich schnell wächst.
  */
 
 import { ApiError } from './api.js';
@@ -29,8 +29,15 @@ import {
 import { bearing, distance, parseCellKey } from '../shared/geo.js';
 
 const SPEICHER = 'forest.local';
+
+/**
+ * Version des gespeicherten Spielstands. Erhöhen, wenn sich Sortennamen oder
+ * der Aufbau ändern -- ältere Stände enthalten dann Sorten, die es nicht mehr
+ * gibt, und werden verworfen statt halb kaputt weitergespielt.
+ */
+const STAND_VERSION = 2;
 const WATER_REFILL_MS = 10 * 60_000;
-const STARTER = { 'seed:gaensebluemchen': 5, 'seed:tulpe': 2 };
+const STARTER = { 'seed:feldhanf': 5, 'seed:ruderalis': 2 };
 
 const fail = (status, msg) => { throw new ApiError(msg, status); };
 
@@ -39,7 +46,7 @@ const fail = (status, msg) => { throw new ApiError(msg, status); };
 function leererStand(name = 'Gärtner') {
   const now = Date.now();
   return {
-    version: 1,
+    version: STAND_VERSION,
     me: {
       id: 1,
       name,
@@ -61,7 +68,9 @@ function lade() {
     const roh = localStorage.getItem(SPEICHER);
     if (!roh) return null;
     const stand = JSON.parse(roh);
-    return stand?.me ? stand : null;
+    if (!stand?.me) return null;
+    if (stand.version !== STAND_VERSION) return null;   // veralteter Aufbau
+    return stand;
   } catch {
     // Beschädigter oder gesperrter Speicher: lieber neu anfangen als abstürzen.
     return null;
@@ -125,11 +134,11 @@ function oeffentlich(stand) {
   };
 }
 
-/** Wachstumsbonus durch Bienenstöcke an einem Ort. */
+/** Wachstumsbonus durch Komposter an einem Ort. */
 function bonusAn(stand, lat, lng) {
-  const nah = stand.buildings.some((b) => b.kind === 'bienenstock'
-    && distance(lat, lng, b.lat, b.lng) <= BUILDINGS.bienenstock.effectRadiusM);
-  return nah ? BUILDINGS.bienenstock.growthBonus : 0;
+  const nah = stand.buildings.some((b) => b.kind === 'komposter'
+    && distance(lat, lng, b.lat, b.lng) <= BUILDINGS.komposter.effectRadiusM);
+  return nah ? BUILDINGS.komposter.growthBonus : 0;
 }
 
 function sichtPflanze(stand, p, from) {
@@ -303,7 +312,7 @@ export function createLocalApi() {
       const now = Date.now();
       const zustand = plantState(p, now, bonusAn(s, p.lat, p.lng));
       if (zustand.withered) fail(409, 'Diese Pflanze ist leider verwelkt.');
-      if (zustand.ready) fail(409, 'Die Pflanze blüht schon — sie kann geerntet werden.');
+      if (zustand.ready) fail(409, 'Die Pflanze ist schon erntereif.');
       if (s.me.water < 1) fail(400, 'Deine Gießkanne ist leer. Sie füllt sich mit der Zeit wieder.');
 
       p.growth_ms = accumulatedGrowthMs(p, now);

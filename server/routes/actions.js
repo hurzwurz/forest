@@ -135,7 +135,7 @@ router.post('/water', requireAuth, async (req, res, next) => {
     const bonus = await growthBonusAt(plant.lat, plant.lng);
     const state = plantState(plant, now, bonus);
     if (state.withered) throw fail(409, 'Diese Pflanze ist leider verwelkt.');
-    if (state.ready) throw fail(409, 'Die Pflanze blüht schon — sie kann geerntet werden.');
+    if (state.ready) throw fail(409, 'Die Pflanze ist schon erntereif.');
     if (me.water < 1) throw fail(400, 'Deine Gießkanne ist leer. Sie füllt sich mit der Zeit wieder.');
 
     const mine = plant.owner_id === me.id;
@@ -234,7 +234,7 @@ router.post('/harvest', requireAuth, async (req, res, next) => {
       return;
     }
 
-    // Bienenstock in der Nähe gibt einen Bonus auf den Ertrag.
+    // Komposter in der Nähe gibt einen Bonus auf den Ertrag.
     const seeds = species.yieldSeeds + (bonus > 0 ? 1 : 0);
 
     await tx(async (client) => {

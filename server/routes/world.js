@@ -73,14 +73,14 @@ router.get('/', requireAuth, async (req, res, next) => {
     const plants = await nearbyPlants(lat, lng, radius);
     const byCell = new Map(plants.map((p) => [p.cell, p]));
 
-    // Alle Bienenstöcke der Umgebung einmal holen und die Pflanzen selbst
+    // Alle Komposter der Umgebung einmal holen und die Pflanzen selbst
     // zuordnen, statt je Pflanze erneut zu fragen.
-    const hives = await nearbyBuildings(
-      lat, lng, radius + BUILDINGS.bienenstock.effectRadiusM, 'bienenstock',
+    const komposter = await nearbyBuildings(
+      lat, lng, radius + BUILDINGS.komposter.effectRadiusM, 'komposter',
     );
     const bonusFuer = (p) => (
-      hives.some((h) => distance(h.lat, h.lng, p.lat, p.lng) <= BUILDINGS.bienenstock.effectRadiusM)
-        ? BUILDINGS.bienenstock.growthBonus
+      komposter.some((k) => distance(k.lat, k.lng, p.lat, p.lng) <= BUILDINGS.komposter.effectRadiusM)
+        ? BUILDINGS.komposter.growthBonus
         : 0
     );
 
