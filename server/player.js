@@ -100,6 +100,11 @@ export function grantCoins(userId, coins) {
 /** Oeffentliche Spielerdarstellung fuer die API. */
 export function publicUser(user) {
   const level = levelFromXp(user.xp);
+  // Der Client braucht das auch dann, wenn das Gewaechshaus gerade ausser
+  // Sichtweite liegt -- sonst bietet er faelschlich "Gewaechshaus bauen" an.
+  const hasHome = !!db
+    .prepare("SELECT 1 FROM buildings WHERE owner_id = ? AND kind = 'gewaechshaus'")
+    .get(user.id);
   return {
     id: user.id,
     name: user.name,
@@ -115,5 +120,6 @@ export function publicUser(user) {
         ? null
         : Math.max(0, WATER_REFILL_MS - (Date.now() - user.water_at)),
     inventory: getInventory(user.id),
+    hasHome,
   };
 }

@@ -1,0 +1,19 @@
+{
+  "name": "Forest — Blumen in der echten Welt",
+  "short_name": "Forest",
+  "description": "Pflanze Blumen an echten Orten und sieh sie durch deine Kamera wachsen.",
+  "lang": "de",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0e1a12",
+  "theme_color": "#0e1a12",
+  "categories": ["games", "lifestyle"],
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/icons/icon-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "/icons/icon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}

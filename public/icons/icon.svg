@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Forest">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1a3a26"/>
+      <stop offset="1" stop-color="#0c1e14"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="118" fill="url(#g)"/>
+  <path d="M256 410 L256 300 Q256 260 280 232" stroke="#5ac37d" stroke-width="30"
+        stroke-linecap="round" fill="none"/>
+  <ellipse cx="199" cy="279" rx="82" ry="45" transform="rotate(-30 199 279)" fill="#5ac37d"/>
+  <ellipse cx="332" cy="231" rx="86" ry="47" transform="rotate(26 332 231)" fill="#82dca0"/>
+</svg>
