@@ -158,13 +158,28 @@ die Alternativen.
 
 ### Render — ohne Kommandozeile, geht auch vom Handy
 
-Auf [render.com](https://render.com) anmelden, „New → Blueprint", GitHub-Konto
-verbinden, dieses Repository auswählen. Render liest `render.yaml` und richtet
-alles selbst ein.
+`render.yaml` steht auf dem kostenlosen Plan, es werden also keine Zahlungsdaten
+verlangt.
 
-Der Haken: Das dort konfigurierte Laufwerk ist bei Render kostenpflichtig. Auf
-dem kostenlosen Plan läuft die App zwar, aber jeder Neustart setzt die Welt
-zurück — zum Anschauen in Ordnung, zum Spielen nicht.
+**Voraussetzung:** Render nimmt den Standard-Branch des Repositorys. Der Code
+muss also auf `main` liegen — vorher den Pull Request mergen.
+
+Dann auf [render.com](https://render.com) mit dem GitHub-Konto anmelden,
+„New → Blueprint", dieses Repository auswählen, „Apply". Render liest
+`render.yaml` und richtet den Rest selbst ein. Der erste Build dauert ein paar
+Minuten; danach steht die Adresse oben auf der Seite.
+
+Zwei Einschränkungen des kostenlosen Plans:
+
+- **Die Welt hält nicht.** Ohne dauerhaftes Laufwerk liegt die SQLite-Datei im
+  Container und ist nach jedem Neustart leer — Konten, Pflanzen und Gebäude
+  sind dann weg.
+- **Der Dienst schläft ein**, wenn eine Viertelstunde niemand zugreift. Der
+  erste Aufruf danach dauert eine halbe bis eine Minute.
+
+Zum Ausprobieren reicht das. Fürs dauerhafte Spielen entweder Fly.io nehmen
+(dort ist das Laufwerk kostenlos dabei) oder in `render.yaml` auf einen
+bezahlten Plan mit Laufwerk wechseln; wie, steht als Kommentar in der Datei.
 
 ### Irgendein eigener Server
 
