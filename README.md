@@ -150,11 +150,18 @@ Ohne Server, ohne Konto bei Dritten, ohne Kosten. Der Arbeitsablauf
 `.github/workflows/pages.yml` veröffentlicht bei jedem Push den Inhalt von
 `public/`; die Adresse lautet dann `https://<konto>.github.io/<repo>/`.
 
-**Einmalig nötig:** Pages einschalten unter *Settings → Pages → Build and
-deployment → Source: **GitHub Actions***. Das kann der Arbeitsablauf nicht
-selbst erledigen — sein Token darf keine Pages-Seite anlegen, der Lauf bricht
-bis dahin mit „Resource not accessible by integration" ab. Nach dem Umstellen
-genügt ein erneuter Lauf, und danach geschieht alles von allein.
+**Zwei Voraussetzungen, beide einmalig:**
+
+1. Pages einschalten unter *Settings → Pages → Build and deployment → Source:
+   **GitHub Actions***. Der Arbeitsablauf kann das nicht selbst — sein Token
+   darf keine Pages-Seite anlegen („Resource not accessible by integration").
+2. Der Code muss auf `main` liegen. Die Umgebung `github-pages` lässt
+   standardmäßig nur den Standard-Branch veröffentlichen; von einem
+   Feature-Branch wird der Job abgewiesen, bevor er startet — ohne Protokoll,
+   was leicht wie ein Defekt aussieht. Deshalb löst der Arbeitsablauf auch nur
+   auf `main` aus.
+
+Danach geschieht alles von allein: Jeder Push auf `main` veröffentlicht neu.
 
 Dort läuft die App im Offline-Betrieb: Der Garten liegt im Browser des Geräts und
 bleibt dort, bis jemand die Browserdaten löscht. Gemeinsames Spielen geht so

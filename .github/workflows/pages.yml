@@ -1,10 +1,10 @@
 # Veröffentlicht die App auf GitHub Pages.
 #
-# EINMALIG NÖTIG: Pages muss in den Repository-Einstellungen eingeschaltet
-# sein -- Settings → Pages → "Build and deployment" → Source: GitHub Actions.
-# Der Token dieses Arbeitsablaufs darf das nicht selbst tun ("Resource not
-# accessible by integration"), deshalb scheitert der Lauf bis dahin. Danach
-# läuft alles ohne weiteres Zutun.
+# Nur von `main` aus. Die Umgebung `github-pages` lässt standardmäßig allein
+# den Standard-Branch veröffentlichen; von einem Feature-Branch wird der Job
+# abgewiesen, bevor er startet -- ohne Protokoll, was wie ein Defekt aussieht.
+#
+# Voraussetzung ist einmalig: Settings → Pages → Source: GitHub Actions.
 #
 # Pages liefert nur fertige Dateien aus, kann also keinen Server starten.
 # Das macht nichts: Findet die App keine API, schaltet sie selbst in den
@@ -17,7 +17,6 @@ on:
   push:
     branches:
       - main
-      - claude/ar-plant-app-pokemon-go-iy037l
   workflow_dispatch:
 
 permissions:
