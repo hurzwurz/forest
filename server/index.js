@@ -7,6 +7,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 
+import { db } from './db.js';
 import { router as authRoutes } from './routes/auth.js';
 import { router as worldRoutes } from './routes/world.js';
 import { router as actionRoutes } from './routes/actions.js';
@@ -89,9 +90,33 @@ const server = useHttps
 server.listen(PORT, '0.0.0.0', () => {
   const scheme = useHttps ? 'https' : 'http';
   console.log(`🌱 Forest läuft auf ${scheme}://localhost:${PORT}`);
-  if (!useHttps) {
+  // Im Betrieb beendet die Laufzeitumgebung TLS selbst -- dort wäre der
+  // Hinweis auf ein eigenes Zertifikat irreführend.
+  if (!useHttps && process.env.NODE_ENV !== 'production') {
     console.log('   Für den Test am Handy: npm run cert  (Kamera braucht HTTPS)');
   }
 });
+
+/**
+ * Sauber beenden. Beim Ausrollen schickt die Laufzeitumgebung SIGTERM und
+ * beendet den Prozess kurz darauf hart -- ohne geschlossene Datenbank bliebe
+ * die Welt mit einem offenen WAL-Journal zurück.
+ */
+let beendet = false;
+for (const signal of ['SIGTERM', 'SIGINT']) {
+  process.on(signal, () => {
+    if (beendet) return;
+    beendet = true;
+    console.log(`\n${signal} empfangen — Server wird beendet.`);
+    server.close(() => {
+      try {
+        db.close();
+      } catch { /* schon zu */ }
+      process.exit(0);
+    });
+    // Hängende Verbindungen dürfen das Beenden nicht blockieren.
+    setTimeout(() => process.exit(0), 8000).unref();
+  });
+}
 
 export { app, server };

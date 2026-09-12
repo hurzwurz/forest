@@ -7,13 +7,21 @@ import { DatabaseSync } from 'node:sqlite';
 import { mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 
-const file = process.env.DB_FILE
+/** Pfad der Weltdatenbank. */
+export const DB_FILE = process.env.DB_FILE
   ? resolve(process.env.DB_FILE)
   : resolve(process.cwd(), 'data/forest.db');
 
-mkdirSync(dirname(file), { recursive: true });
+/**
+ * Verzeichnis für alles Dauerhafte. Im Betrieb zeigt DB_FILE auf ein
+ * eingehängtes Laufwerk -- dann muss auch der Token-Schlüssel dorthin, sonst
+ * wäre er nach jedem Neustart weg und alle Anmeldungen ungültig.
+ */
+export const DATA_DIR = dirname(DB_FILE);
 
-export const db = new DatabaseSync(file);
+mkdirSync(DATA_DIR, { recursive: true });
+
+export const db = new DatabaseSync(DB_FILE);
 
 db.exec(`
   PRAGMA journal_mode = WAL;

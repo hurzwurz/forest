@@ -1,0 +1,24 @@
+# Render -- der Weg ohne Kommandozeile: render.com/deploy, GitHub-Konto
+# verbinden, Repository auswählen. Geht auch vom Handy aus.
+#
+# ACHTUNG: Das Laufwerk unten ist bei Render kostenpflichtig. Ohne
+# Laufwerk läuft die App zwar, aber Spielstände und Pflanzen sind nach
+# jedem Neustart verschwunden -- für ein erstes Ausprobieren in Ordnung,
+# für echtes Spielen nicht. Wer dauerhaft kostenlos will, nimmt Fly.io.
+
+services:
+  - type: web
+    name: forest
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: starter
+    healthCheckPath: /api/health
+    envVars:
+      - key: DB_FILE
+        value: /data/forest.db
+      - key: JWT_SECRET
+        generateValue: true     # einmalig erzeugt und dauerhaft gemerkt
+    disk:
+      name: forest-data
+      mountPath: /data
+      sizeGB: 1

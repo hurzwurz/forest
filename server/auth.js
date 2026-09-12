@@ -2,10 +2,10 @@
 
 import { randomBytes } from 'node:crypto';
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
-import { resolve, dirname } from 'node:path';
+import { resolve } from 'node:path';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { db } from './db.js';
+import { db, DATA_DIR } from './db.js';
 
 const TOKEN_TTL = '30d';
 
@@ -15,12 +15,12 @@ const TOKEN_TTL = '30d';
  */
 function loadSecret() {
   if (process.env.JWT_SECRET) return process.env.JWT_SECRET;
-  const file = resolve(process.cwd(), 'data/.jwt-secret');
+  const file = resolve(DATA_DIR, '.jwt-secret');
   if (existsSync(file)) return readFileSync(file, 'utf8').trim();
   const secret = randomBytes(32).toString('hex');
-  mkdirSync(dirname(file), { recursive: true });
+  mkdirSync(DATA_DIR, { recursive: true });
   writeFileSync(file, secret, { mode: 0o600 });
-  console.warn('[auth] JWT_SECRET nicht gesetzt -- neuer Schlüssel in data/.jwt-secret');
+  console.warn(`[auth] JWT_SECRET nicht gesetzt -- neuer Schlüssel in ${file}`);
   return secret;
 }
 

@@ -127,6 +127,74 @@ Menü → „App installieren". Dann läuft Forest ohne Browserleiste im Vollbil
 
 ---
 
+## Online stellen
+
+Damit die App von überall erreichbar ist — und die Kamera ohne
+Zertifikatswarnung funktioniert — muss sie irgendwo öffentlich laufen. Das
+Projekt bringt alles Nötige mit: `Dockerfile`, `fly.toml` und `render.yaml`.
+
+**Wichtig bei jedem Anbieter:** Die Welt liegt in einer SQLite-Datei. Ohne ein
+dauerhaftes Laufwerk unter `/data` sind Konten und Pflanzen nach jedem Ausrollen
+verschwunden.
+
+### Fly.io — empfohlen
+
+Der einzige der beiden Wege mit dauerhaftem Laufwerk im kostenlosen Rahmen.
+Braucht die Kommandozeile:
+
+```bash
+fly launch --no-deploy --copy-config     # nimmt die mitgelieferte fly.toml
+fly volumes create forest_data --size 1  # 1 GB reichen für sehr viele Gärten
+fly secrets set JWT_SECRET=$(openssl rand -hex 32)
+fly deploy
+```
+
+Danach steht die App unter `https://<app-name>.fly.dev`. HTTPS macht Fly selbst,
+also nichts mit Zertifikaten zu tun.
+
+Den App-Namen in `fly.toml` vorher auf etwas Freies ändern — `forest-ar` ist
+vermutlich vergeben. Region `fra` ist Frankfurt; `fly platform regions` zeigt
+die Alternativen.
+
+### Render — ohne Kommandozeile, geht auch vom Handy
+
+Auf [render.com](https://render.com) anmelden, „New → Blueprint", GitHub-Konto
+verbinden, dieses Repository auswählen. Render liest `render.yaml` und richtet
+alles selbst ein.
+
+Der Haken: Das dort konfigurierte Laufwerk ist bei Render kostenpflichtig. Auf
+dem kostenlosen Plan läuft die App zwar, aber jeder Neustart setzt die Welt
+zurück — zum Anschauen in Ordnung, zum Spielen nicht.
+
+### Irgendein eigener Server
+
+```bash
+docker build -t forest .
+docker run -d -p 3000:3000 \
+  -v forest_data:/data \
+  -e JWT_SECRET="$(openssl rand -hex 32)" \
+  -e NODE_ENV=production \
+  forest
+```
+
+Davor gehört ein Reverse-Proxy mit TLS (Caddy oder nginx) — ohne HTTPS gibt
+kein Browser die Kamera frei.
+
+### Was das Image tut
+
+- Node 22 auf Alpine, rund 250 MB, läuft als Benutzer `node` statt als root
+- `/api/health` als Health-Check, von Docker, Fly und Render gleichermaßen genutzt
+- Beendet sich bei SIGTERM sauber und schließt die Datenbank, damit beim
+  Ausrollen kein offenes WAL-Journal zurückbleibt
+- Erwartet die Weltdatenbank unter `/data/forest.db`; dorthin gehört das
+  dauerhafte Laufwerk
+
+Setz `JWT_SECRET` immer ausdrücklich. Ohne die Variable erzeugt der Server sich
+selbst einen Schlüssel und legt ihn neben der Datenbank ab — das geht gut,
+solange das Laufwerk bleibt, aber ein gesetztes Geheimnis ist eindeutiger.
+
+---
+
 ## Aufbau
 
 ```
@@ -149,6 +217,10 @@ public/
   sw.js          Service Worker für den Offline-Betrieb
 test/
   api.test.js    Integrationstests gegen die echte API
+
+Dockerfile       Betriebs-Image (Node 22 auf Alpine, läuft als Nicht-Root)
+fly.toml         Fly.io samt dauerhaftem Laufwerk
+render.yaml      Render-Blueprint
 ```
 
 ### Warum so
