@@ -24,6 +24,10 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * Alle Pfade sind relativ. GitHub Pages liefert die App unter einem
+ * Unterordner aus (`/forest/`); absolute Pfade zeigten dort ins Leere.
+ */
 async function request(path, { method = 'GET', body, auth = true } = {}) {
   let res;
   try {
@@ -45,14 +49,14 @@ async function request(path, { method = 'GET', body, auth = true } = {}) {
 }
 
 export const api = {
-  register: (name, password) => request('/api/auth/register', { method: 'POST', body: { name, password }, auth: false }),
-  login: (name, password) => request('/api/auth/login', { method: 'POST', body: { name, password }, auth: false }),
-  me: () => request('/api/auth/me'),
-  catalog: () => request('/api/world/catalog', { auth: false }),
+  register: (name, password) => request('api/auth/register', { method: 'POST', body: { name, password }, auth: false }),
+  login: (name, password) => request('api/auth/login', { method: 'POST', body: { name, password }, auth: false }),
+  me: () => request('api/auth/me'),
+  catalog: () => request('api/world/catalog', { auth: false }),
   world: (lat, lng, radius = 150) =>
-    request(`/api/world?lat=${lat.toFixed(6)}&lng=${lng.toFixed(6)}&radius=${radius}`),
-  plant: (cell, species, lat, lng) => request('/api/action/plant', { method: 'POST', body: { cell, species, lat, lng } }),
-  water: (plantId, lat, lng) => request('/api/action/water', { method: 'POST', body: { plantId, lat, lng } }),
-  harvest: (plantId, lat, lng) => request('/api/action/harvest', { method: 'POST', body: { plantId, lat, lng } }),
-  build: (kind, lat, lng) => request('/api/action/build', { method: 'POST', body: { kind, lat, lng } }),
+    request(`api/world?lat=${lat.toFixed(6)}&lng=${lng.toFixed(6)}&radius=${radius}`),
+  plant: (cell, species, lat, lng) => request('api/action/plant', { method: 'POST', body: { cell, species, lat, lng } }),
+  water: (plantId, lat, lng) => request('api/action/water', { method: 'POST', body: { plantId, lat, lng } }),
+  harvest: (plantId, lat, lng) => request('api/action/harvest', { method: 'POST', body: { plantId, lat, lng } }),
+  build: (kind, lat, lng) => request('api/action/build', { method: 'POST', body: { kind, lat, lng } }),
 };

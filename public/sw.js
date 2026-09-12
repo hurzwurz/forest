@@ -7,20 +7,24 @@
 
 const CACHE = 'forest-v1';
 
+// Relativ, weil GitHub Pages unter einem Unterordner ausliefert.
 const SHELL = [
-  '/',
-  '/index.html',
-  '/styles.css',
-  '/app.js',
-  '/js/api.js',
-  '/js/ar.js',
-  '/js/map.js',
-  '/js/sensors.js',
-  '/js/ui.js',
-  '/manifest.webmanifest',
-  '/icons/icon.svg',
-  '/icons/icon-192.png',
-  '/icons/icon-512.png',
+  './',
+  'index.html',
+  'styles.css',
+  'app.js',
+  'js/api.js',
+  'js/ar.js',
+  'js/local.js',
+  'js/map.js',
+  'js/sensors.js',
+  'js/ui.js',
+  'shared/game.js',
+  'shared/geo.js',
+  'manifest.webmanifest',
+  'icons/icon.svg',
+  'icons/icon-192.png',
+  'icons/icon-512.png',
 ];
 
 self.addEventListener('install', (event) => {
@@ -43,7 +47,7 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
   if (event.request.method !== 'GET' || url.origin !== self.location.origin) return;
-  if (url.pathname.startsWith('/api/')) return; // immer frisch vom Server
+  if (url.pathname.includes('/api/')) return; // immer frisch vom Server
 
   event.respondWith(
     caches.match(event.request).then((treffer) => {
@@ -56,7 +60,7 @@ self.addEventListener('fetch', (event) => {
           }
           return antwort;
         })
-        .catch(() => treffer ?? caches.match('/index.html'));
+        .catch(() => treffer ?? caches.match('index.html'));
 
       return treffer ?? netz;
     }),

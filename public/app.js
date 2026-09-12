@@ -2,7 +2,8 @@
  * Steuerung der App: verbindet Sensoren, Server und Oberfläche.
  */
 
-import { api, ApiError, getToken, setToken } from './js/api.js';
+import { api as serverApi, ApiError, getToken, setToken } from './js/api.js';
+import { createLocalApi } from './js/local.js';
 import { LocationSource, OrientationSource } from './js/sensors.js';
 import { ArView } from './js/ar.js';
 import { MiniMap } from './js/map.js';
@@ -15,7 +16,15 @@ const NACHLADE_M = 12;
 /** Spätestens nach dieser Zeit wird ohnehin neu geladen. */
 const NACHLADE_MS = 20_000;
 
+/**
+ * Der gewählte Rückhalt: entweder der Server oder der Offline-Betrieb im
+ * Browser. Beide bieten dieselben Aufrufe an, deshalb merkt der Rest der
+ * Steuerung vom Unterschied nichts.
+ */
+let api = serverApi;
+
 const state = {
+  modus: null,        // 'server' oder 'lokal'
   me: null,
   katalog: null,
   welt: null,          // letzte Serverantwort
@@ -70,10 +79,12 @@ $('#auth-form').addEventListener('submit', async (e) => {
   knopf.textContent = 'Einen Moment …';
 
   try {
-    const res = authModus === 'login'
-      ? await api.login(name, passwort)
-      : await api.register(name, passwort);
-    setToken(res.token);
+    const res = state.modus === 'lokal'
+      ? await api.register(name)
+      : (authModus === 'login'
+        ? await api.login(name, passwort)
+        : await api.register(name, passwort));
+    if (state.modus !== 'lokal') setToken(res.token);
     state.me = res.me;
     await spielStarten();
   } catch (err) {
@@ -341,7 +352,10 @@ $('#btn-build').addEventListener('click', () => {
 
 $('#btn-profile').addEventListener('click', () => {
   state.ausgewaehlt = null;
-  ui.openSheet('Profil', ui.profileView(state.me, { onLogout: abmelden }));
+  ui.openSheet('Profil', ui.profileView(state.me, {
+    onLogout: abmelden,
+    lokal: state.modus === 'lokal',
+  }));
 });
 
 $('#retry-camera').addEventListener('click', () => ar.startCamera());
@@ -375,9 +389,53 @@ function abmelden() {
 
 /* ------------------------------------------------------------------ Start */
 
+/**
+ * Prüft, ob ein Server erreichbar ist. Auf GitHub Pages gibt es keinen --
+ * dann übernimmt der Offline-Betrieb, ohne dass irgendwo etwas umgestellt
+ * werden müsste.
+ */
+async function backendWaehlen() {
+  try {
+    const res = await fetch('api/health', { cache: 'no-store' });
+    if (res.ok) {
+      api = serverApi;
+      return 'server';
+    }
+  } catch {
+    // keine Verbindung -- gleich weiter zum Offline-Betrieb
+  }
+  api = createLocalApi();
+  return 'lokal';
+}
+
+/** Anmeldemaske auf den Offline-Betrieb umstellen: nur ein Name, kein Passwort. */
+function anmeldungFuerOffline() {
+  document.querySelector('.tabs').hidden = true;
+  const passwort = $('#auth-form').querySelector('[name=password]');
+  passwort.closest('.field').hidden = true;
+  passwort.removeAttribute('required');
+  $('#auth-submit').textContent = 'Garten anlegen';
+  $('.auth-sub').innerHTML =
+    'Pflanze Blumen an echten Orten.<br>Dein Garten bleibt auf diesem Gerät.';
+  $('.auth-note').textContent =
+    'Ohne Server: Alles liegt in diesem Browser. Andere sehen deine Blumen nicht, '
+    + 'dafür brauchst du kein Konto. Dein Standort verlässt das Gerät nicht.';
+}
+
 async function init() {
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/sw.js').catch(() => {});
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  }
+
+  state.modus = await backendWaehlen();
+
+  if (state.modus === 'lokal') {
+    anmeldungFuerOffline();
+    if (!api.hatGarten()) return;          // erst nach dem Namen weiter
+    state.me = (await api.me()).me;
+    await spielStarten();
+    ui.toast('Offline-Modus: Dein Garten liegt auf diesem Gerät.');
+    return;
   }
 
   if (!getToken()) return;

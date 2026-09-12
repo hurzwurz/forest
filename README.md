@@ -4,7 +4,13 @@ Pflanze Blumen an echten Orten und sieh sie durch die Kamera deines Handys wachs
 
 Forest funktioniert wie Pokémon Go, nur mit Garten statt Monstern: Du siehst die
 echte Welt durch die Kamera, darüber liegen die Pflanzplätze in deiner Umgebung.
-Was du pflanzt, bleibt an diesem Ort liegen — und andere Spieler sehen es auch.
+Was du pflanzt, bleibt an diesem Ort liegen.
+
+**Zwei Betriebsarten, eine App.** Findet die App beim Start einen Server, spielen
+alle in derselben Welt: Du siehst fremde Blumen, andere deine, und Gießen bringt
+Erfahrung. Findet sie keinen — etwa auf GitHub Pages —, schaltet sie von selbst in
+den Offline-Betrieb und rechnet im Browser. Dann gehört der Garten dir allein und
+liegt auf deinem Gerät. Umzustellen ist dafür nichts.
 
 ---
 
@@ -138,6 +144,23 @@ Menü → „App installieren". Dann läuft Forest ohne Browserleiste im Vollbil
 
 ---
 
+## Der kürzeste Weg: GitHub Pages
+
+Ohne Server, ohne Konto, ohne Kosten. Der Arbeitsablauf
+`.github/workflows/pages.yml` veröffentlicht bei jedem Push den Inhalt von
+`public/`; die Adresse lautet dann `https://<konto>.github.io/<repo>/`.
+
+Dort läuft die App im Offline-Betrieb: Der Garten liegt im Browser des Geräts und
+bleibt dort, bis jemand die Browserdaten löscht. Gemeinsames Spielen geht so
+nicht — dafür braucht es den Server unten.
+
+Beides schließt sich nicht aus: Dieselbe Fassung läuft auf Pages offline und
+hinter einem Server gemeinsam. Die Spielregeln liegen in `public/shared/` und
+werden von beiden Seiten benutzt, damit eine Blume nicht je nach Betriebsart
+unterschiedlich schnell wächst.
+
+---
+
 ## Online stellen
 
 Damit die App von überall erreichbar ist — und die Kamera ohne
@@ -226,24 +249,28 @@ Datenbanken im eigenen Netz unverschlüsselt, alles im Internet mit TLS.
 ```
 server/
   index.js       HTTP-Server, Ratenbegrenzung, liefert die PWA aus
-  geo.js         Weltraster, Entfernungen, Peilungen
-  game.js        Arten, Wachstum, Gebäude, Weltgenerierung
+  geo.js         Weiterleitung auf public/shared/geo.js
+  game.js        Weiterleitung auf public/shared/game.js
   db.js          Datenbankverbindung, Schema und Transaktionen
   auth.js        Registrierung, Login, Token-Prüfung
   player.js      Gießkanne, Inventar, XP
   routes/        auth · world · actions
 public/
   index.html     Gerüst der Oberfläche
-  app.js         Steuerung: verbindet Sensoren, Server und Anzeige
+  app.js         Steuerung: wählt den Rückhalt, verbindet Sensoren und Anzeige
+  shared/geo.js   Weltraster, Entfernungen, Peilungen — von Server und Browser genutzt
+  shared/game.js  Arten, Wachstum, Gebäude, Weltgenerierung — ebenso
   js/sensors.js  GPS und Kompass (die Plattformunterschiede stecken hier)
   js/ar.js       Kamerabild und Überlagerung
   js/map.js      Minikarte auf Canvas
   js/ui.js       Blätter, Karten, Hinweise
   js/api.js      Serveranbindung
-  sw.js          Service Worker für den Offline-Betrieb
+  js/local.js    Derselbe Funktionsumfang ohne Server, im Browser gerechnet
+  sw.js          Service Worker fürs Zwischenspeichern der Oberfläche
 test/
   api.test.js    Integrationstests gegen die echte API
 
+.github/workflows/ Tests bei jedem Push, Veröffentlichung auf GitHub Pages
 Dockerfile         Betriebs-Image (Node 22 auf Alpine, läuft als Nicht-Root)
 docker-compose.yml Datenbank und App für die lokale Entwicklung
 fly.toml           Fly.io
@@ -270,6 +297,11 @@ Der Umstieg hat noch etwas anderes gebracht: Regeln wie „auf einem Platz wäch
 nur eine Pflanze" und „ein Gewächshaus pro Spieler" stehen jetzt als eindeutige
 Indizes in der Datenbank statt als Abfrage im Code davor. Bei zwei gleichzeitigen
 Anfragen gewinnt dadurch genau eine — vorher hätten beide durchgehen können.
+
+**Eine App, zwei Betriebsarten.** Beim Start fragt die App einmal `api/health`
+ab. Antwortet etwas, benutzt sie den Server; antwortet nichts, den Offline-Weg.
+Beide bieten dieselben Aufrufe an, deshalb merkt der Rest der Steuerung vom
+Unterschied nichts — und es gibt keinen Schalter, den man falsch stellen kann.
 
 ### Die Blickrichtung
 

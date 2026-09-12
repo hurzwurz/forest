@@ -275,9 +275,9 @@ function beschreibung(obj, katalog) {
   return { emoji: obj.emoji, titel: obj.speciesName, unter: `${zustand} · ${obj.mine ? 'deine' : obj.owner}` };
 }
 
-export function profileView(me, { onLogout }) {
+export function profileView(me, { onLogout, lokal = false }) {
   const box = el('div');
-  box.append(el('p', 'meta', `Angemeldet als ${me.name}`));
+  box.append(el('p', 'meta', lokal ? `Dein Garten: ${me.name}` : `Angemeldet als ${me.name}`));
   box.append(statLine('Stufe', me.level));
   box.append(statLine('Erfahrung', `${me.xp} XP`));
   box.append(statLine('Münzen', me.coins));
@@ -285,14 +285,20 @@ export function profileView(me, { onLogout }) {
 
   const hinweis = el('p', 'meta');
   hinweis.style.marginTop = '16px';
-  hinweis.textContent = 'Tipp: Fremde Pflanzen zu gießen bringt Erfahrung — einmal je Pflanze.';
+  hinweis.textContent = lokal
+    ? 'Offline-Modus: Dieser Garten liegt nur in diesem Browser. Löschst du die '
+      + 'Browserdaten, ist er weg.'
+    : 'Tipp: Fremde Pflanzen zu gießen bringt Erfahrung — einmal je Pflanze.';
   box.append(hinweis);
 
-  const abmelden = el('button', 'btn btn--block');
-  abmelden.type = 'button';
-  abmelden.textContent = 'Abmelden';
-  abmelden.style.marginTop = '12px';
-  abmelden.addEventListener('click', onLogout);
-  box.append(abmelden);
+  // Ohne Server gibt es kein Konto, von dem man sich abmelden könnte.
+  if (!lokal) {
+    const abmelden = el('button', 'btn btn--block');
+    abmelden.type = 'button';
+    abmelden.textContent = 'Abmelden';
+    abmelden.style.marginTop = '12px';
+    abmelden.addEventListener('click', onLogout);
+    box.append(abmelden);
+  }
   return box;
 }
