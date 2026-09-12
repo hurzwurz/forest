@@ -146,9 +146,15 @@ Menü → „App installieren". Dann läuft Forest ohne Browserleiste im Vollbil
 
 ## Der kürzeste Weg: GitHub Pages
 
-Ohne Server, ohne Konto, ohne Kosten. Der Arbeitsablauf
+Ohne Server, ohne Konto bei Dritten, ohne Kosten. Der Arbeitsablauf
 `.github/workflows/pages.yml` veröffentlicht bei jedem Push den Inhalt von
 `public/`; die Adresse lautet dann `https://<konto>.github.io/<repo>/`.
+
+**Einmalig nötig:** Pages einschalten unter *Settings → Pages → Build and
+deployment → Source: **GitHub Actions***. Das kann der Arbeitsablauf nicht
+selbst erledigen — sein Token darf keine Pages-Seite anlegen, der Lauf bricht
+bis dahin mit „Resource not accessible by integration" ab. Nach dem Umstellen
+genügt ein erneuter Lauf, und danach geschieht alles von allein.
 
 Dort läuft die App im Offline-Betrieb: Der Garten liegt im Browser des Geräts und
 bleibt dort, bis jemand die Browserdaten löscht. Gemeinsames Spielen geht so

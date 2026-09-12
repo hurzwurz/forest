@@ -1,5 +1,11 @@
 # Veröffentlicht die App auf GitHub Pages.
 #
+# EINMALIG NÖTIG: Pages muss in den Repository-Einstellungen eingeschaltet
+# sein -- Settings → Pages → "Build and deployment" → Source: GitHub Actions.
+# Der Token dieses Arbeitsablaufs darf das nicht selbst tun ("Resource not
+# accessible by integration"), deshalb scheitert der Lauf bis dahin. Danach
+# läuft alles ohne weiteres Zutun.
+#
 # Pages liefert nur fertige Dateien aus, kann also keinen Server starten.
 # Das macht nichts: Findet die App keine API, schaltet sie selbst in den
 # Offline-Betrieb und rechnet im Browser. Wer die gemeinsame Welt will,
