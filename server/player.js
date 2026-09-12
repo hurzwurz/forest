@@ -1,17 +1,17 @@
 /** Spielerzustand: Gießkanne, Inventar, XP. */
 
-import { db } from './db.js';
+import { many, one, run } from './db.js';
 import { BUILDINGS, levelFromXp, xpForLevel } from './game.js';
 import { distance } from './geo.js';
 
-/** Zeit, in der sich eine Einheit Wasser nachfuellt. */
+/** Zeit, in der sich eine Einheit Wasser nachfüllt. */
 export const WATER_REFILL_MS = 10 * 60_000;
 
 /**
  * Rechnet die seit water_at vergangene Zeit in Wasser um und schreibt sie fest.
  * Steht der Spieler an einem Brunnen, ist die Kanne sofort voll.
  */
-export function refillWater(user, lat = null, lng = null) {
+export async function refillWater(user, lat = null, lng = null) {
   const now = Date.now();
   let water = user.water;
   const max = user.water_max;
@@ -21,14 +21,14 @@ export function refillWater(user, lat = null, lng = null) {
     if (gained > 0) water = Math.min(max, water + gained);
   }
 
-  if (lat != null && lng != null && water < max && nearWell(lat, lng)) water = max;
+  if (lat != null && lng != null && water < max && await nearWell(lat, lng)) water = max;
 
   if (water !== user.water || now - user.water_at >= WATER_REFILL_MS) {
     // Nur den verbrauchten Teil des Zeitguthabens abziehen, damit angefangene
     // Intervalle nicht verloren gehen.
     const used = Math.floor((now - user.water_at) / WATER_REFILL_MS) * WATER_REFILL_MS;
     const water_at = water >= max ? now : user.water_at + used;
-    db.prepare('UPDATE users SET water = ?, water_at = ? WHERE id = ?').run(water, water_at, user.id);
+    await run('UPDATE users SET water = $1, water_at = $2 WHERE id = $3', [water, water_at, user.id]);
     user.water = water;
     user.water_at = water_at;
   }
@@ -36,75 +36,85 @@ export function refillWater(user, lat = null, lng = null) {
 }
 
 /** Liegt ein Brunnen (egal von wem) in Wirkreichweite? */
-export function nearWell(lat, lng) {
-  const r = BUILDINGS.brunnen.effectRadiusM;
-  const rows = nearbyBuildings(lat, lng, r, 'brunnen');
+export async function nearWell(lat, lng) {
+  const rows = await nearbyBuildings(lat, lng, BUILDINGS.brunnen.effectRadiusM, 'brunnen');
   return rows.length > 0;
 }
 
-/** Gebaeude im Umkreis -- grob ueber ein Koordinatenfenster vorgefiltert. */
-export function nearbyBuildings(lat, lng, radiusM, kind = null) {
+/** Gebäude im Umkreis -- grob über ein Koordinatenfenster vorgefiltert. */
+export async function nearbyBuildings(lat, lng, radiusM, kind = null) {
   const dLat = radiusM / 111_320;
   const dLng = radiusM / Math.max(1, 111_320 * Math.cos((lat * Math.PI) / 180));
   const sql =
-    'SELECT b.*, u.name AS owner_name FROM buildings b JOIN users u ON u.id = b.owner_id ' +
-    'WHERE b.lat BETWEEN ? AND ? AND b.lng BETWEEN ? AND ?' +
-    (kind ? ' AND b.kind = ?' : '');
+    'SELECT b.*, u.name AS owner_name FROM buildings b JOIN users u ON u.id = b.owner_id '
+    + 'WHERE b.lat BETWEEN $1 AND $2 AND b.lng BETWEEN $3 AND $4'
+    + (kind ? ' AND b.kind = $5' : '');
   const args = [lat - dLat, lat + dLat, lng - dLng, lng + dLng];
   if (kind) args.push(kind);
-  return db
-    .prepare(sql)
-    .all(...args)
+
+  const rows = await many(sql, args);
+  return rows
     .map((b) => ({ ...b, distance: distance(lat, lng, b.lat, b.lng) }))
     .filter((b) => b.distance <= radiusM);
 }
 
-/** Wachstumsbonus an einem Ort durch Bienenstoecke (nicht kumulativ). */
-export function growthBonusAt(lat, lng) {
-  const hives = nearbyBuildings(lat, lng, BUILDINGS.bienenstock.effectRadiusM, 'bienenstock');
+/** Wachstumsbonus an einem Ort durch Bienenstöcke (nicht kumulativ). */
+export async function growthBonusAt(lat, lng) {
+  const hives = await nearbyBuildings(lat, lng, BUILDINGS.bienenstock.effectRadiusM, 'bienenstock');
   return hives.length ? BUILDINGS.bienenstock.growthBonus : 0;
 }
 
 /* ------------------------------------------------------------- Inventar */
 
-export function getInventory(userId) {
-  const rows = db.prepare('SELECT item, qty FROM inventory WHERE user_id = ? AND qty > 0').all(userId);
+export async function getInventory(userId) {
+  const rows = await many('SELECT item, qty FROM inventory WHERE user_id = $1 AND qty > 0', [userId]);
   return Object.fromEntries(rows.map((r) => [r.item, r.qty]));
 }
 
-export function addItem(userId, item, delta) {
-  db.prepare(
-    `INSERT INTO inventory (user_id, item, qty) VALUES (?, ?, ?)
-     ON CONFLICT(user_id, item) DO UPDATE SET qty = qty + excluded.qty`,
-  ).run(userId, item, delta);
+export async function addItem(userId, item, delta, client = null) {
+  const sql = `INSERT INTO inventory (user_id, item, qty) VALUES ($1, $2, $3)
+               ON CONFLICT (user_id, item) DO UPDATE SET qty = inventory.qty + EXCLUDED.qty`;
+  const args = [userId, item, delta];
+  if (client) await client.query(sql, args);
+  else await run(sql, args);
 }
 
-/** Zieht Gegenstaende ab; gibt false zurueck, wenn der Bestand nicht reicht. */
-export function takeItem(userId, item, qty) {
-  const info = db
-    .prepare('UPDATE inventory SET qty = qty - ? WHERE user_id = ? AND item = ? AND qty >= ?')
-    .run(qty, userId, item, qty);
-  return info.changes > 0;
+/**
+ * Zieht Gegenstände ab; gibt false zurück, wenn der Bestand nicht reicht.
+ * Die Mengenprüfung steckt in der WHERE-Klausel, damit zwei gleichzeitige
+ * Anfragen nicht denselben Samen zweimal ausgeben.
+ */
+export async function takeItem(userId, item, qty, client = null) {
+  const sql = 'UPDATE inventory SET qty = qty - $1 WHERE user_id = $2 AND item = $3 AND qty >= $1';
+  const args = [qty, userId, item];
+  const res = client ? await client.query(sql, args) : await run(sql, args);
+  return res.rowCount > 0;
 }
 
 /* ------------------------------------------------------------ Fortschritt */
 
-export function grantXp(userId, xp) {
-  db.prepare('UPDATE users SET xp = xp + ? WHERE id = ?').run(xp, userId);
+export async function grantXp(userId, xp, client = null) {
+  const sql = 'UPDATE users SET xp = xp + $1 WHERE id = $2';
+  if (client) await client.query(sql, [xp, userId]);
+  else await run(sql, [xp, userId]);
 }
 
-export function grantCoins(userId, coins) {
-  db.prepare('UPDATE users SET coins = coins + ? WHERE id = ?').run(coins, userId);
+export async function grantCoins(userId, coins, client = null) {
+  const sql = 'UPDATE users SET coins = coins + $1 WHERE id = $2';
+  if (client) await client.query(sql, [coins, userId]);
+  else await run(sql, [coins, userId]);
 }
 
-/** Oeffentliche Spielerdarstellung fuer die API. */
-export function publicUser(user) {
+/** Öffentliche Spielerdarstellung für die API. */
+export async function publicUser(user) {
   const level = levelFromXp(user.xp);
-  // Der Client braucht das auch dann, wenn das Gewaechshaus gerade ausser
-  // Sichtweite liegt -- sonst bietet er faelschlich "Gewaechshaus bauen" an.
-  const hasHome = !!db
-    .prepare("SELECT 1 FROM buildings WHERE owner_id = ? AND kind = 'gewaechshaus'")
-    .get(user.id);
+  // Der Client braucht das auch dann, wenn das Gewächshaus gerade außer
+  // Sichtweite liegt -- sonst bietet er fälschlich "Gewächshaus bauen" an.
+  const heim = await one(
+    "SELECT 1 FROM buildings WHERE owner_id = $1 AND kind = 'gewaechshaus'",
+    [user.id],
+  );
+
   return {
     id: user.id,
     name: user.name,
@@ -119,7 +129,12 @@ export function publicUser(user) {
       user.water >= user.water_max
         ? null
         : Math.max(0, WATER_REFILL_MS - (Date.now() - user.water_at)),
-    inventory: getInventory(user.id),
-    hasHome,
+    inventory: await getInventory(user.id),
+    hasHome: !!heim,
   };
+}
+
+/** Frischer Datensatz nach schreibenden Aktionen. */
+export function reloadUser(id) {
+  return one('SELECT * FROM users WHERE id = $1', [id]);
 }

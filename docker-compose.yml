@@ -1,0 +1,40 @@
+# Lokale Entwicklung: Datenbank und App in einem Rutsch.
+#
+#   docker compose up -d
+#   http://localhost:3000
+#
+# Nur die Datenbank (wenn die App per `npm start` laufen soll):
+#   docker compose up -d db
+#   DATABASE_URL=postgres://forest:forest@localhost:5432/forest npm start
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: forest
+      POSTGRES_PASSWORD: forest
+      POSTGRES_DB: forest
+    ports:
+      - "5432:5432"
+    volumes:
+      - forest_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U forest"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  app:
+    build: .
+    environment:
+      DATABASE_URL: postgres://forest:forest@db:5432/forest
+      JWT_SECRET: nur-fuer-lokale-entwicklung
+      NODE_ENV: production
+    ports:
+      - "3000:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  forest_pgdata:

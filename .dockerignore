@@ -11,3 +11,4 @@ Dockerfile
 .dockerignore
 fly.toml
 render.yaml
+docker-compose.yml

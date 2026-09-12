@@ -5,13 +5,15 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-import { DatabaseSync } from 'node:sqlite';
+import pg from 'pg';
 
-const dir = mkdtempSync(join(tmpdir(), 'forest-test-'));
-process.env.DB_FILE = join(dir, 'test.db');
+// Gegen eine echte Postgres-Instanz, nicht gegen eine Nachbildung -- sonst
+// bliebe gerade das ungetestet, was sich beim Umstieg geändert hat:
+// Transaktionen und die Eindeutigkeitsregeln in der Datenbank.
+const TEST_DB = process.env.TEST_DATABASE_URL
+  ?? 'postgres://postgres:test@localhost:55432/forest_test';
+
+process.env.DATABASE_URL = TEST_DB;
 process.env.JWT_SECRET = 'test-secret';
 process.env.PORT = '0';
 
@@ -21,9 +23,15 @@ const { spotsInRadius, REACH_M } = await import('../server/game.js');
 await new Promise((res) => (server.listening ? res() : server.once('listening', res)));
 const base = `http://127.0.0.1:${server.address().port}`;
 
-test.after(() => {
+// Sauberer Ausgangszustand, damit Läufe wiederholbar sind.
+const admin = new pg.Pool({ connectionString: TEST_DB });
+await admin.query('TRUNCATE waterings, plants, buildings, inventory, users RESTART IDENTITY CASCADE');
+
+test.after(async () => {
   server.close();
-  rmSync(dir, { recursive: true, force: true });
+  await admin.end();
+  const { close } = await import('../server/db.js');
+  await close().catch(() => {});
 });
 
 const LAT = 52.52;
@@ -47,17 +55,26 @@ async function register(name, password = 'blumenwiese1') {
   return res.body.token;
 }
 
+/** Erster erreichbarer Platz, auf dem gerade nichts wächst. */
+async function freierSpot(soils = ['normal', 'fruchtbar', 'karg']) {
+  const kandidaten = reachableSpots(soils);
+  const { rows } = await admin.query(
+    'SELECT cell FROM plants WHERE harvested_at IS NULL AND cell = ANY($1)',
+    [kandidaten.map((s) => s.id)],
+  );
+  const vergeben = new Set(rows.map((r) => r.cell));
+  return kandidaten.find((s) => !vergeben.has(s.id)) ?? null;
+}
+
 /** Zwei erreichbare Pflanzplaetze mit passendem Boden suchen. */
 function reachableSpots(soils) {
   return spotsInRadius(LAT, LNG, REACH_M).filter((s) => soils.includes(s.soil));
 }
 
 /** Schreibt einer Pflanze genug Wachstumszeit gut, ohne zu warten. */
-function fastForward(plantId, hours) {
-  const db = new DatabaseSync(process.env.DB_FILE);
-  db.prepare('UPDATE plants SET growth_ms = ?, last_watered_at = ? WHERE id = ?')
-    .run(hours * 3600_000, Date.now(), plantId);
-  db.close();
+async function fastForward(plantId, hours) {
+  await admin.query('UPDATE plants SET growth_ms = $1, last_watered_at = $2 WHERE id = $3',
+    [hours * 3600_000, Date.now(), plantId]);
 }
 
 /**
@@ -65,13 +82,12 @@ function fastForward(plantId, hours) {
  * wachsende Sorte. Eine schnelle Sorte blüht im ersten Gießfenster ohnehin
  * auf und kann deshalb gar nicht verwelken.
  */
-function letWither(plantId) {
-  const db = new DatabaseSync(process.env.DB_FILE);
+async function letWither(plantId) {
   const lange = Date.now() - 72 * 3600_000;
-  db.prepare(`UPDATE plants SET species = 'rose', growth_ms = 0,
-              planted_at = ?, last_watered_at = ? WHERE id = ?`)
-    .run(lange, lange, plantId);
-  db.close();
+  await admin.query(
+    `UPDATE plants SET species = 'rose', growth_ms = 0,
+     planted_at = $1, last_watered_at = $1 WHERE id = $2`,
+    [lange, plantId]);
 }
 
 /** Pflanzt für `token` auf dem ersten freien passenden Platz. */
@@ -173,7 +189,7 @@ test('ein verfrühter Erntversuch zerstört die Pflanze nicht', async () => {
     'Pflanze verschwindet nach abgelehnter Ernte nicht',
   );
 
-  fastForward(planted.id, 2);
+  await fastForward(planted.id, 2);
   const harvest = await api('/api/action/harvest', {
     token, method: 'POST', body: { plantId: planted.id, lat: LAT, lng: LNG },
   });
@@ -255,7 +271,7 @@ test('verwelkte Pflanzen darf jeder wegräumen, ernten nur der Besitzer', async 
   });
   assert.equal(zuFrueh.status, 403);
 
-  letWither(plant.id);
+  await letWither(plant.id);
 
   const welt = await api(`/api/world?lat=${LAT}&lng=${LNG}&radius=100`, { token: fremder });
   const sicht = welt.body.plants.find((p) => p.id === plant.id);
@@ -277,4 +293,51 @@ test('verwelkte Pflanzen darf jeder wegräumen, ernten nur der Besitzer', async 
     token: fremder, method: 'POST', body: { cell: plant.cell, species: 'gaensebluemchen', lat: LAT, lng: LNG },
   });
   assert.equal(neu.status, 201, 'auf dem freigeräumten Platz lässt sich neu pflanzen');
+});
+
+test('zwei gleichzeitige Pflanzversuche auf denselben Platz: einer gewinnt', async () => {
+  const token = await register('Gleichzeitig');
+  const spot = await freierSpot();
+  assert.ok(spot, 'ein freier Platz muss sich finden lassen');
+
+  const vorher = await api('/api/auth/me', { token });
+  const samenVorher = vorher.body.me.inventory['seed:gaensebluemchen'];
+
+  // Beide Anfragen gehen gleichzeitig raus. Ohne Regel in der Datenbank
+  // käme hier zweimal 201 heraus -- und der Samen wäre doppelt abgezogen.
+  const [a, b] = await Promise.all([
+    api('/api/action/plant', {
+      token, method: 'POST', body: { cell: spot.id, species: 'gaensebluemchen', lat: LAT, lng: LNG },
+    }),
+    api('/api/action/plant', {
+      token, method: 'POST', body: { cell: spot.id, species: 'gaensebluemchen', lat: LAT, lng: LNG },
+    }),
+  ]);
+
+  const codes = [a.status, b.status].sort();
+  assert.deepEqual(codes, [201, 409], `erwartet genau ein Erfolg, war: ${JSON.stringify(codes)}`);
+
+  const reihen = await admin.query(
+    'SELECT count(*)::int AS n FROM plants WHERE cell = $1 AND harvested_at IS NULL', [spot.id]);
+  assert.equal(reihen.rows[0].n, 1, 'genau eine Pflanze auf dem Platz');
+
+  const nachher = await api('/api/auth/me', { token });
+  assert.equal(
+    nachher.body.me.inventory['seed:gaensebluemchen'], samenVorher - 1,
+    'der fehlgeschlagene Versuch darf keinen Samen kosten',
+  );
+});
+
+test('zwei gleichzeitige Gewächshäuser: nur eines entsteht', async () => {
+  const token = await register('Doppelbauer');
+  const [a, b] = await Promise.all([
+    api('/api/action/build', { token, method: 'POST', body: { kind: 'gewaechshaus', lat: 52.60, lng: 13.50 } }),
+    api('/api/action/build', { token, method: 'POST', body: { kind: 'gewaechshaus', lat: 52.60, lng: 13.50 } }),
+  ]);
+  const codes = [a.status, b.status].sort();
+  assert.deepEqual(codes, [201, 409], `erwartet genau ein Erfolg, war: ${JSON.stringify(codes)}`);
+
+  const reihen = await admin.query(
+    "SELECT count(*)::int AS n FROM buildings WHERE kind = 'gewaechshaus' AND lat = 52.60");
+  assert.equal(reihen.rows[0].n, 1);
 });

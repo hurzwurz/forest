@@ -7,7 +7,8 @@ import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 
-import { db } from './db.js';
+import { close as closeDb, migrate } from './db.js';
+import { initAuth } from './auth.js';
 import { router as authRoutes } from './routes/auth.js';
 import { router as worldRoutes } from './routes/world.js';
 import { router as actionRoutes } from './routes/actions.js';
@@ -79,6 +80,11 @@ app.use((err, req, res, next) => {
  * oder HTTPS. Liegt ein Zertifikat unter data/, wird direkt HTTPS bedient --
  * so laesst sich die App im eigenen WLAN auf dem Handy testen.
  */
+// Schema anlegen und den Token-Schlüssel laden, bevor Anfragen angenommen
+// werden -- sonst liefen die ersten Aufrufe gegen eine leere Datenbank.
+await migrate();
+await initAuth();
+
 const certFile = resolve(process.cwd(), 'data/cert.pem');
 const keyFile = resolve(process.cwd(), 'data/key.pem');
 const useHttps = existsSync(certFile) && existsSync(keyFile);
@@ -99,8 +105,8 @@ server.listen(PORT, '0.0.0.0', () => {
 
 /**
  * Sauber beenden. Beim Ausrollen schickt die Laufzeitumgebung SIGTERM und
- * beendet den Prozess kurz darauf hart -- ohne geschlossene Datenbank bliebe
- * die Welt mit einem offenen WAL-Journal zurück.
+ * beendet den Prozess kurz darauf hart; offene Datenbankverbindungen würden
+ * sonst erst nach einer Zeitüberschreitung freigegeben.
  */
 let beendet = false;
 for (const signal of ['SIGTERM', 'SIGINT']) {
@@ -108,10 +114,8 @@ for (const signal of ['SIGTERM', 'SIGINT']) {
     if (beendet) return;
     beendet = true;
     console.log(`\n${signal} empfangen — Server wird beendet.`);
-    server.close(() => {
-      try {
-        db.close();
-      } catch { /* schon zu */ }
+    server.close(async () => {
+      await closeDb().catch(() => {});
       process.exit(0);
     });
     // Hängende Verbindungen dürfen das Beenden nicht blockieren.

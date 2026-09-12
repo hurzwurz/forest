@@ -1,26 +1,13 @@
 # Render -- der Weg ohne Kommandozeile: render.com, "New → Blueprint",
 # GitHub-Konto verbinden, dieses Repository auswählen. Geht auch vom Handy.
 #
-# Diese Datei steht bewusst auf dem KOSTENLOSEN Plan, damit beim Durchklicken
-# keine Zahlungsdaten verlangt werden. Der Preis dafür:
+# Der kostenlose Plan reicht hier aus, weil der Container nichts speichert:
+# Die Welt liegt in einer PostgreSQL-Datenbank außerhalb. Dass der Dienst nach
+# 15 Minuten ohne Zugriff einschläft, kostet nur den ersten Aufruf danach
+# etwa eine Minute -- verloren geht nichts.
 #
-#   - Kein dauerhaftes Laufwerk. Die Welt liegt in einer SQLite-Datei im
-#     Container, und die ist nach jedem Neustart leer: Konten, Pflanzen und
-#     Gebäude sind dann weg. Zum Ausprobieren völlig in Ordnung, zum
-#     dauerhaften Spielen nicht.
-#   - Der Dienst schläft nach etwa 15 Minuten ohne Zugriff ein. Der erste
-#     Aufruf danach dauert eine halbe bis eine Minute, dann läuft alles normal.
-#
-# Für dauerhaftes Spielen gibt es zwei Wege:
-#   a) Fly.io nehmen -- dort ist das Laufwerk im kostenlosen Rahmen enthalten
-#      (siehe fly.toml).
-#   b) Hier auf einen bezahlten Plan wechseln und das Laufwerk ergänzen:
-#
-#        plan: starter
-#        disk:
-#          name: forest-data
-#          mountPath: /data
-#          sizeGB: 1
+# DATABASE_URL wird beim Anlegen abgefragt. Eine kostenlose Datenbank gibt es
+# z. B. bei neon.tech (Anmeldung mit GitHub, Verbindungszeichenfolge kopieren).
 
 services:
   - type: web
@@ -30,9 +17,12 @@ services:
     plan: free
     healthCheckPath: /api/health
     envVars:
-      # Ohne dauerhaftes Laufwerk muss der Schlüssel für die Anmelde-Tokens
-      # von Render verwaltet werden. Er wird einmal erzeugt und bleibt dann
-      # erhalten -- sonst wäre man nach jedem Neustart abgemeldet.
+      # sync: false heißt: Render fragt den Wert beim Einrichten ab und
+      # speichert ihn verschlüsselt, statt ihn in diese Datei zu schreiben.
+      - key: DATABASE_URL
+        sync: false
+      # Einmal erzeugt und dauerhaft gemerkt, damit niemand nach einem
+      # Ausrollen abgemeldet wird.
       - key: JWT_SECRET
         generateValue: true
       - key: NODE_ENV

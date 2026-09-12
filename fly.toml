@@ -1,11 +1,16 @@
-# Fly.io -- empfohlen, weil es ein dauerhaftes Laufwerk gibt.
-# Die Welt liegt in einer SQLite-Datei; ohne Laufwerk wäre sie nach jedem
-# Ausrollen weg.
+# Fly.io -- der Weg über die Kommandozeile.
 #
 #   fly launch --no-deploy --copy-config
-#   fly volumes create forest_data --size 1
+#   fly secrets set DATABASE_URL='postgres://...'        # z. B. von neon.tech
 #   fly secrets set JWT_SECRET=$(openssl rand -hex 32)
 #   fly deploy
+#
+# Ein Laufwerk braucht es nicht mehr: Der Container speichert nichts, die
+# Welt liegt in der Datenbank hinter DATABASE_URL.
+#
+# Alternativ bringt Fly eine eigene Postgres-Instanz mit:
+#   fly postgres create --name forest-db
+#   fly postgres attach forest-db        # setzt DATABASE_URL automatisch
 
 app = "forest-ar"
 primary_region = "fra"          # Frankfurt; siehe `fly platform regions`
@@ -14,11 +19,7 @@ primary_region = "fra"          # Frankfurt; siehe `fly platform regions`
 
 [env]
   PORT = "3000"
-  DB_FILE = "/data/forest.db"
-
-[[mounts]]
-  source = "forest_data"
-  destination = "/data"
+  NODE_ENV = "production"
 
 [http_service]
   internal_port = 3000

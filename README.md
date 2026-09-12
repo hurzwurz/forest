@@ -10,19 +10,29 @@ Was du pflanzt, bleibt an diesem Ort liegen — und andere Spieler sehen es auch
 
 ## Schnellstart
 
+Die Welt liegt in einer PostgreSQL-Datenbank. Am schnellsten geht es mit Docker:
+
 ```bash
-npm install
-npm start
+docker compose up -d          # Datenbank und App zusammen
 ```
 
 Dann <http://localhost:3000> im Browser öffnen.
 
+Ohne Docker für die App, nur für die Datenbank:
+
+```bash
+docker compose up -d db
+npm install
+DATABASE_URL=postgres://forest:forest@localhost:5432/forest npm start
+```
+
 > **Für die Kamera am Handy** brauchst du HTTPS — siehe [Am Handy testen](#am-handy-testen).
 > Auf `localhost` am Rechner geht die Kamera auch ohne.
 
-Tests:
+Tests (brauchen eine erreichbare Datenbank):
 
 ```bash
+npm run db:test               # startet ein Postgres auf Port 55432
 npm test
 ```
 
@@ -130,63 +140,59 @@ Menü → „App installieren". Dann läuft Forest ohne Browserleiste im Vollbil
 ## Online stellen
 
 Damit die App von überall erreichbar ist — und die Kamera ohne
-Zertifikatswarnung funktioniert — muss sie irgendwo öffentlich laufen. Das
-Projekt bringt alles Nötige mit: `Dockerfile`, `fly.toml` und `render.yaml`.
+Zertifikatswarnung funktioniert — muss sie irgendwo öffentlich laufen.
 
-**Wichtig bei jedem Anbieter:** Die Welt liegt in einer SQLite-Datei. Ohne ein
-dauerhaftes Laufwerk unter `/data` sind Konten und Pflanzen nach jedem Ausrollen
-verschwunden.
+Der Container selbst speichert nichts. Alles Bleibende liegt in der Datenbank
+hinter `DATABASE_URL`. Dadurch ist es egal, ob der Hoster den Container
+zwischendurch wegwirft — genau das tun kostenlose Pläne nämlich.
 
-### Fly.io — empfohlen
+### Schritt 1: Datenbank
 
-Der einzige der beiden Wege mit dauerhaftem Laufwerk im kostenlosen Rahmen.
-Braucht die Kommandozeile:
+Eine kostenlose PostgreSQL-Datenbank gibt es bei [neon.tech](https://neon.tech)
+(Anmeldung mit GitHub, keine Zahlungsdaten). Projekt anlegen, dann die
+angezeigte Verbindungszeichenfolge kopieren — sie sieht so aus:
 
-```bash
-fly launch --no-deploy --copy-config     # nimmt die mitgelieferte fly.toml
-fly volumes create forest_data --size 1  # 1 GB reichen für sehr viele Gärten
-fly secrets set JWT_SECRET=$(openssl rand -hex 32)
-fly deploy
+```
+postgres://benutzer:passwort@ep-irgendwas.eu-central-1.aws.neon.tech/neondb?sslmode=require
 ```
 
-Danach steht die App unter `https://<app-name>.fly.dev`. HTTPS macht Fly selbst,
-also nichts mit Zertifikaten zu tun.
+Supabase oder jede andere Postgres-Instanz gehen genauso.
 
-Den App-Namen in `fly.toml` vorher auf etwas Freies ändern — `forest-ar` ist
-vermutlich vergeben. Region `fra` ist Frankfurt; `fly platform regions` zeigt
-die Alternativen.
-
-### Render — ohne Kommandozeile, geht auch vom Handy
-
-`render.yaml` steht auf dem kostenlosen Plan, es werden also keine Zahlungsdaten
-verlangt.
+### Schritt 2a: Render — ohne Kommandozeile, geht auch vom Handy
 
 **Voraussetzung:** Render nimmt den Standard-Branch des Repositorys. Der Code
 muss also auf `main` liegen — vorher den Pull Request mergen.
 
-Dann auf [render.com](https://render.com) mit dem GitHub-Konto anmelden,
-„New → Blueprint", dieses Repository auswählen, „Apply". Render liest
-`render.yaml` und richtet den Rest selbst ein. Der erste Build dauert ein paar
-Minuten; danach steht die Adresse oben auf der Seite.
+Auf [render.com](https://render.com) mit dem GitHub-Konto anmelden,
+„New → Blueprint", dieses Repository auswählen. Render fragt nach
+`DATABASE_URL` — dort die Zeichenfolge aus Schritt 1 einsetzen — und richtet
+den Rest selbst ein. Der erste Build dauert ein paar Minuten.
 
-Zwei Einschränkungen des kostenlosen Plans:
+Der kostenlose Plan reicht. Er schläft nach 15 Minuten ohne Zugriff ein, der
+erste Aufruf danach dauert etwa eine Minute. Verloren geht dabei nichts.
 
-- **Die Welt hält nicht.** Ohne dauerhaftes Laufwerk liegt die SQLite-Datei im
-  Container und ist nach jedem Neustart leer — Konten, Pflanzen und Gebäude
-  sind dann weg.
-- **Der Dienst schläft ein**, wenn eine Viertelstunde niemand zugreift. Der
-  erste Aufruf danach dauert eine halbe bis eine Minute.
+### Schritt 2b: Fly.io — über die Kommandozeile
 
-Zum Ausprobieren reicht das. Fürs dauerhafte Spielen entweder Fly.io nehmen
-(dort ist das Laufwerk kostenlos dabei) oder in `render.yaml` auf einen
-bezahlten Plan mit Laufwerk wechseln; wie, steht als Kommentar in der Datei.
+```bash
+fly launch --no-deploy --copy-config
+fly secrets set DATABASE_URL='postgres://...'
+fly secrets set JWT_SECRET=$(openssl rand -hex 32)
+fly deploy
+```
 
-### Irgendein eigener Server
+Fly bringt auch eine eigene Postgres-Instanz mit, dann entfällt Schritt 1:
+
+```bash
+fly postgres create --name forest-db
+fly postgres attach forest-db      # setzt DATABASE_URL automatisch
+```
+
+### Schritt 2c: Eigener Server
 
 ```bash
 docker build -t forest .
 docker run -d -p 3000:3000 \
-  -v forest_data:/data \
+  -e DATABASE_URL='postgres://...' \
   -e JWT_SECRET="$(openssl rand -hex 32)" \
   -e NODE_ENV=production \
   forest
@@ -198,15 +204,19 @@ kein Browser die Kamera frei.
 ### Was das Image tut
 
 - Node 22 auf Alpine, rund 250 MB, läuft als Benutzer `node` statt als root
+- Legt das Datenbankschema beim Start selbst an
 - `/api/health` als Health-Check, von Docker, Fly und Render gleichermaßen genutzt
-- Beendet sich bei SIGTERM sauber und schließt die Datenbank, damit beim
-  Ausrollen kein offenes WAL-Journal zurückbleibt
-- Erwartet die Weltdatenbank unter `/data/forest.db`; dorthin gehört das
-  dauerhafte Laufwerk
+- Beendet sich bei SIGTERM sauber und schließt die Verbindungen
+- Speichert nichts im Dateisystem — der Container darf jederzeit verschwinden
 
-Setz `JWT_SECRET` immer ausdrücklich. Ohne die Variable erzeugt der Server sich
-selbst einen Schlüssel und legt ihn neben der Datenbank ab — das geht gut,
-solange das Laufwerk bleibt, aber ein gesetztes Geheimnis ist eindeutiger.
+`JWT_SECRET` ist optional: Ohne die Variable erzeugt der Server beim ersten
+Start einen Schlüssel und legt ihn in der Datenbank ab. Ausdrücklich gesetzt
+ist trotzdem übersichtlicher.
+
+**Verschlüsselung zur Datenbank** richtet sich nach `sslmode` in der
+Verbindungszeichenfolge. Fehlt der Parameter, entscheidet die Adresse:
+Datenbanken im eigenen Netz unverschlüsselt, alles im Internet mit TLS.
+`PGSSLMODE` überstimmt beides.
 
 ---
 
@@ -217,7 +227,7 @@ server/
   index.js       HTTP-Server, Ratenbegrenzung, liefert die PWA aus
   geo.js         Weltraster, Entfernungen, Peilungen
   game.js        Arten, Wachstum, Gebäude, Weltgenerierung
-  db.js          SQLite-Schema (über das in Node eingebaute node:sqlite)
+  db.js          Datenbankverbindung, Schema und Transaktionen
   auth.js        Registrierung, Login, Token-Prüfung
   player.js      Gießkanne, Inventar, XP
   routes/        auth · world · actions
@@ -233,9 +243,10 @@ public/
 test/
   api.test.js    Integrationstests gegen die echte API
 
-Dockerfile       Betriebs-Image (Node 22 auf Alpine, läuft als Nicht-Root)
-fly.toml         Fly.io samt dauerhaftem Laufwerk
-render.yaml      Render-Blueprint
+Dockerfile         Betriebs-Image (Node 22 auf Alpine, läuft als Nicht-Root)
+docker-compose.yml Datenbank und App für die lokale Entwicklung
+fly.toml           Fly.io
+render.yaml        Render-Blueprint
 ```
 
 ### Warum so
@@ -248,8 +259,15 @@ Rose ins Wohnzimmer pflanzen.
 **Kein Build-Schritt.** Das Frontend besteht aus ES-Modulen, die der Browser direkt
 lädt. Keine Bundler-Konfiguration, kein Kompilieren — `npm start` genügt.
 
-**SQLite über `node:sqlite`.** In Node ab 22.5 eingebaut, also kein nativer Build und
-keine Datenbank, die separat laufen müsste. Die ganze Welt liegt in `data/forest.db`.
+**PostgreSQL, nicht SQLite.** Angefangen hatte das Projekt mit einer
+SQLite-Datei — bequem, aber sie lebt im Dateisystem des Containers, und das ist
+auf kostenlosen Hostern flüchtig: Nach jedem Einschlafen wäre die Welt leer
+gewesen. Mit einer Datenbank außerhalb überlebt sie das.
+
+Der Umstieg hat noch etwas anderes gebracht: Regeln wie „auf einem Platz wächst
+nur eine Pflanze" und „ein Gewächshaus pro Spieler" stehen jetzt als eindeutige
+Indizes in der Datenbank statt als Abfrage im Code davor. Bei zwei gleichzeitigen
+Anfragen gewinnt dadurch genau eine — vorher hätten beide durchgehen können.
 
 ### Die Blickrichtung
 
@@ -271,9 +289,11 @@ Alles optional, siehe `.env.example`:
 
 | Variable | Standard | Bedeutung |
 |---|---|---|
+| `DATABASE_URL` | — | **Pflicht.** Verbindung zur PostgreSQL-Datenbank |
 | `PORT` | `3000` | Port des Servers |
-| `DB_FILE` | `data/forest.db` | Pfad zur Weltdatenbank |
 | `JWT_SECRET` | wird erzeugt | Schlüssel für Anmelde-Tokens |
+| `PGSSLMODE` | aus der URL | Überstimmt die Verschlüsselungsentscheidung |
+| `DB_POOL_MAX` | `10` | Gleichzeitige Datenbankverbindungen |
 | `WORLD_SEED` | `forest-v1` | Formt die gesamte Welt — ein anderer Wert verteilt alle Pflanzplätze neu |
 
 ---
@@ -287,10 +307,9 @@ Das Spiel ist vollständig spielbar, aber ein paar Dinge lohnen sich als Nächst
   bekommen.
 - **Mehr Sorten**, etwa seltene Blumen, die nur zu bestimmten Tageszeiten aufgehen.
 - **Betrieb**: Für echten Mehrspielerbetrieb gehören Ratenbegrenzung und
-  TLS-Terminierung vor den Prozess (nginx, Caddy), und die Datenbank auf ein
-  gesichertes Laufwerk. Bei mehr als ein paar hundert gleichzeitigen Spielern wird
-  aus SQLite sinnvollerweise PostgreSQL — die Abfragen sind bewusst einfach gehalten,
-  damit der Wechsel leichtfällt.
+  TLS-Terminierung vor den Prozess (nginx, Caddy). Die Weltabfrage filtert
+  Pflanzen und Gebäude noch über ein Koordinatenfenster; bei vielen Spielern
+  lohnt sich PostGIS oder ein Index auf der Rasterzelle.
 - **Plausibilitätsprüfung der Position**: Aktuell wird die Entfernung geprüft, aber
   nicht, wie schnell sich jemand bewegt. Wer seinen Standort fälscht, kann
   weiterspringen, als er laufen könnte.
