@@ -1,0 +1,23 @@
+{
+  "name": "forest",
+  "version": "0.1.0",
+  "private": true,
+  "description": "AR-Gartenspiel: Blumen in der echten Welt pflanzen",
+  "type": "module",
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js",
+    "test": "node --test test/*.test.js",
+    "cert": "bash scripts/make-cert.sh",
+    "db:test": "docker run -d --rm --name forest-pg -e POSTGRES_PASSWORD=test -e POSTGRES_DB=forest -p 55432:5432 postgres:16-alpine"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "express": "^4.21.2",
+    "jsonwebtoken": "^9.0.2",
+    "pg": "^8.23.0"
+  }
+}

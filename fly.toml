@@ -1,0 +1,45 @@
+# Fly.io -- der Weg über die Kommandozeile.
+#
+#   fly launch --no-deploy --copy-config
+#   fly secrets set DATABASE_URL='postgres://...'        # z. B. von neon.tech
+#   fly secrets set JWT_SECRET=$(openssl rand -hex 32)
+#   fly deploy
+#
+# Ein Laufwerk braucht es nicht mehr: Der Container speichert nichts, die
+# Welt liegt in der Datenbank hinter DATABASE_URL.
+#
+# Alternativ bringt Fly eine eigene Postgres-Instanz mit:
+#   fly postgres create --name forest-db
+#   fly postgres attach forest-db        # setzt DATABASE_URL automatisch
+
+app = "forest-ar"
+primary_region = "fra"          # Frankfurt; siehe `fly platform regions`
+
+[build]
+
+[env]
+  PORT = "3000"
+  NODE_ENV = "production"
+
+[http_service]
+  internal_port = 3000
+  force_https = true            # die Kamera braucht HTTPS
+  auto_stop_machines = "suspend"
+  auto_start_machines = true
+  min_machines_running = 0
+
+  [http_service.concurrency]
+    type = "requests"
+    hard_limit = 200
+    soft_limit = 150
+
+  [[http_service.checks]]
+    interval = "30s"
+    timeout = "5s"
+    grace_period = "10s"
+    method = "GET"
+    path = "/api/health"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"

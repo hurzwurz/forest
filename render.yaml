@@ -1,0 +1,29 @@
+# Render -- der Weg ohne Kommandozeile: render.com, "New → Blueprint",
+# GitHub-Konto verbinden, dieses Repository auswählen. Geht auch vom Handy.
+#
+# Der kostenlose Plan reicht hier aus, weil der Container nichts speichert:
+# Die Welt liegt in einer PostgreSQL-Datenbank außerhalb. Dass der Dienst nach
+# 15 Minuten ohne Zugriff einschläft, kostet nur den ersten Aufruf danach
+# etwa eine Minute -- verloren geht nichts.
+#
+# DATABASE_URL wird beim Anlegen abgefragt. Eine kostenlose Datenbank gibt es
+# z. B. bei neon.tech (Anmeldung mit GitHub, Verbindungszeichenfolge kopieren).
+
+services:
+  - type: web
+    name: forest
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    healthCheckPath: /api/health
+    envVars:
+      # sync: false heißt: Render fragt den Wert beim Einrichten ab und
+      # speichert ihn verschlüsselt, statt ihn in diese Datei zu schreiben.
+      - key: DATABASE_URL
+        sync: false
+      # Einmal erzeugt und dauerhaft gemerkt, damit niemand nach einem
+      # Ausrollen abgemeldet wird.
+      - key: JWT_SECRET
+        generateValue: true
+      - key: NODE_ENV
+        value: production

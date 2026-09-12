@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+  <meta name="theme-color" content="#0e1a12">
+  <meta name="description" content="Pflanze Blumen an echten Orten und sieh sie durch die Kamera deines Handys.">
+  <title>Forest — Blumen in der echten Welt</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- Anmeldung ---------------------------------------------------------- -->
+<section id="screen-auth" class="screen screen--auth">
+  <div class="auth-card">
+    <div class="auth-logo" aria-hidden="true">🌱</div>
+    <h1>Forest</h1>
+    <p class="auth-sub">Pflanze Blumen an echten Orten.<br>Sieh sie durch deine Kamera wachsen.</p>
+
+    <div class="tabs" role="tablist">
+      <button class="tab is-active" data-auth-tab="login" role="tab" aria-selected="true">Anmelden</button>
+      <button class="tab" data-auth-tab="register" role="tab" aria-selected="false">Neu hier</button>
+    </div>
+
+    <form id="auth-form" autocomplete="on" novalidate>
+      <label class="field">
+        <span>Name</span>
+        <input name="name" type="text" autocomplete="username" required minlength="3" maxlength="20"
+               placeholder="Wie sollen dich andere nennen?">
+      </label>
+      <label class="field">
+        <span>Passwort</span>
+        <input name="password" type="password" autocomplete="current-password" required minlength="8"
+               placeholder="mindestens 8 Zeichen">
+      </label>
+      <p class="form-error" id="auth-error" role="alert" hidden></p>
+      <button class="btn btn--primary btn--block" type="submit" id="auth-submit">Anmelden</button>
+    </form>
+
+    <p class="auth-note">Dein Standort wird nur benutzt, um dir die Plätze in deiner
+      Umgebung zu zeigen. Er wird nicht dauerhaft gespeichert.</p>
+  </div>
+</section>
+
+<!-- Spiel -------------------------------------------------------------- -->
+<section id="screen-game" class="screen" hidden>
+
+  <!-- Kamerabild als Hintergrund -->
+  <video id="camera" playsinline autoplay muted></video>
+  <div id="camera-fallback" class="camera-fallback" hidden>
+    <div class="camera-fallback__inner">
+      <div class="camera-fallback__icon">📷</div>
+      <p id="camera-fallback-text">Kamera nicht verfügbar.</p>
+      <button class="btn btn--ghost" id="retry-camera">Nochmal versuchen</button>
+    </div>
+  </div>
+
+  <!-- AR-Überlagerung -->
+  <div id="ar-layer" class="ar-layer" aria-live="polite"></div>
+  <div id="crosshair" class="crosshair" aria-hidden="true"></div>
+
+  <!-- Kopfleiste -->
+  <header class="hud">
+    <div class="hud__row">
+      <div class="chip chip--level">
+        <span class="chip__icon">🌿</span>
+        <span id="hud-level">1</span>
+        <div class="xp-bar"><i id="hud-xp"></i></div>
+      </div>
+      <div class="chip"><span class="chip__icon">🪙</span><span id="hud-coins">0</span></div>
+      <div class="chip"><span class="chip__icon">💧</span><span id="hud-water">0</span></div>
+      <button class="chip chip--btn" id="btn-profile" aria-label="Profil und Einstellungen">
+        <span class="chip__icon">☰</span>
+      </button>
+    </div>
+    <div class="hud__row hud__row--sub">
+      <span class="gps" id="hud-gps">Standort wird gesucht …</span>
+      <span class="compass" id="hud-compass" hidden>🧭 <b>—</b></span>
+    </div>
+  </header>
+
+  <!-- Minikarte -->
+  <div id="map-wrap" class="map-wrap">
+    <canvas id="map" width="300" height="300"></canvas>
+    <button class="map-toggle" id="btn-map-size" aria-label="Karte vergrößern">⤢</button>
+  </div>
+
+  <!-- Fußleiste -->
+  <nav class="dock">
+    <button class="dock__btn" id="btn-nearby">
+      <span class="dock__icon">📍</span><span>In der Nähe</span>
+      <b class="badge" id="badge-nearby" hidden>0</b>
+    </button>
+    <button class="dock__btn" id="btn-bag">
+      <span class="dock__icon">🎒</span><span>Beutel</span>
+    </button>
+    <button class="dock__btn" id="btn-build">
+      <span class="dock__icon">🏡</span><span>Bauen</span>
+    </button>
+  </nav>
+
+  <!-- Ausziehbares Blatt für Details, Beutel, Bauen -->
+  <div class="sheet-backdrop" id="sheet-backdrop" hidden></div>
+  <div class="sheet" id="sheet" hidden role="dialog" aria-modal="true" aria-labelledby="sheet-title">
+    <div class="sheet__grip" aria-hidden="true"></div>
+    <div class="sheet__head">
+      <h2 id="sheet-title">…</h2>
+      <button class="sheet__close" id="sheet-close" aria-label="Schließen">✕</button>
+    </div>
+    <div class="sheet__body" id="sheet-body"></div>
+  </div>
+
+  <div class="toasts" id="toasts" aria-live="assertive"></div>
+</section>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>

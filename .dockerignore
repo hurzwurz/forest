@@ -1,0 +1,14 @@
+node_modules
+data
+test
+scripts
+.git
+.github
+*.md
+.env
+.gitignore
+Dockerfile
+.dockerignore
+fly.toml
+render.yaml
+docker-compose.yml
