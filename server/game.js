@@ -168,8 +168,15 @@ export function spotsInRadius(lat, lng, radiusM) {
 
 /* ---------------------------------------------------------- Wachstumslogik */
 
-/** Nach so vielen Stunden ohne Wasser stoppt das Wachstum. */
-export const THIRSTY_AFTER_H = 6;
+/**
+ * Nach so vielen Stunden ohne Wasser stoppt das Wachstum.
+ *
+ * Bewusst kürzer als die Reifezeit jeder Sorte ab der Tulpe: Beim Pflanzen
+ * zählt die Blume als frisch gegossen, und wäre dieses Fenster länger als die
+ * Reifezeit, blühte sie ohne einen einzigen Gießvorgang auf -- das Gießen wäre
+ * im frühen Spiel wirkungslos.
+ */
+export const THIRSTY_AFTER_H = 2;
 /** Nach so vielen Stunden ohne Wasser verwelkt die Pflanze. */
 export const WITHER_AFTER_H = 48;
 

@@ -156,7 +156,8 @@ export function plantDetail(plant, { me, spiel }) {
     actions.append(giessen);
   }
 
-  if (plant.mine && (plant.ready || plant.withered)) {
+  // Verwelktes darf jeder wegräumen, ernten nur der Besitzer.
+  if (plant.withered || (plant.mine && plant.ready)) {
     const ernten = el('button', 'btn btn--harvest', plant.withered ? '🧹 Aufräumen' : '🌼 Ernten');
     ernten.type = 'button';
     ernten.disabled = !plant.inReach;

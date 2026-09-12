@@ -60,6 +60,31 @@ function fastForward(plantId, hours) {
   db.close();
 }
 
+/**
+ * Lässt eine Pflanze verdursten: lange nicht gegossen und als langsam
+ * wachsende Sorte. Eine schnelle Sorte blüht im ersten Gießfenster ohnehin
+ * auf und kann deshalb gar nicht verwelken.
+ */
+function letWither(plantId) {
+  const db = new DatabaseSync(process.env.DB_FILE);
+  const lange = Date.now() - 72 * 3600_000;
+  db.prepare(`UPDATE plants SET species = 'rose', growth_ms = 0,
+              planted_at = ?, last_watered_at = ? WHERE id = ?`)
+    .run(lange, lange, plantId);
+  db.close();
+}
+
+/** Pflanzt für `token` auf dem ersten freien passenden Platz. */
+async function plantSomewhere(token, species = 'gaensebluemchen', soils = ['normal', 'fruchtbar', 'karg']) {
+  for (const s of reachableSpots(soils)) {
+    const res = await api('/api/action/plant', {
+      token, method: 'POST', body: { cell: s.id, species, lat: LAT, lng: LNG },
+    });
+    if (res.status === 201) return res.body.plant;
+  }
+  return null;
+}
+
 test('Registrierung prüft Name und Passwort', async () => {
   assert.equal((await api('/api/auth/register', { method: 'POST', body: { name: 'ab', password: 'blumenwiese1' } })).status, 400);
   assert.equal((await api('/api/auth/register', { method: 'POST', body: { name: 'Gärtner', password: 'kurz' } })).status, 400);
@@ -215,4 +240,41 @@ test('Bauen: ein Gewächshaus, danach nur in dessen Umkreis', async () => {
     token, method: 'POST', body: { kind: 'brunnen', lat: LAT + 0.0004, lng: LNG },
   });
   assert.equal(broke.status, 400, 'Brunnen kostet 60 Münzen');
+});
+
+test('verwelkte Pflanzen darf jeder wegräumen, ernten nur der Besitzer', async () => {
+  const owner = await register('Vergesslich');
+  const fremder = await register('Aufräumer');
+
+  const plant = await plantSomewhere(owner);
+  assert.ok(plant, 'ein freier Platz muss sich finden lassen');
+
+  // Solange sie lebt, ist sie tabu.
+  const zuFrueh = await api('/api/action/harvest', {
+    token: fremder, method: 'POST', body: { plantId: plant.id, lat: LAT, lng: LNG },
+  });
+  assert.equal(zuFrueh.status, 403);
+
+  letWither(plant.id);
+
+  const welt = await api(`/api/world?lat=${LAT}&lng=${LNG}&radius=100`, { token: fremder });
+  const sicht = welt.body.plants.find((p) => p.id === plant.id);
+  assert.equal(sicht.withered, true, 'nach 72 Stunden ohne Wasser ist sie verwelkt');
+
+  const aufgeraeumt = await api('/api/action/harvest', {
+    token: fremder, method: 'POST', body: { plantId: plant.id, lat: LAT, lng: LNG },
+  });
+  assert.equal(aufgeraeumt.status, 200, JSON.stringify(aufgeraeumt.body));
+  assert.equal(aufgeraeumt.body.withered, true);
+
+  // Der Platz muss danach wieder frei sein, sonst blockiert er für immer.
+  const danach = await api(`/api/world?lat=${LAT}&lng=${LNG}&radius=100`, { token: fremder });
+  assert.ok(!danach.body.plants.some((p) => p.id === plant.id));
+  const spot = danach.body.spots.find((s) => s.id === plant.cell);
+  assert.equal(spot.occupied, false, 'der Pflanzplatz ist wieder benutzbar');
+
+  const neu = await api('/api/action/plant', {
+    token: fremder, method: 'POST', body: { cell: plant.cell, species: 'gaensebluemchen', lat: LAT, lng: LNG },
+  });
+  assert.equal(neu.status, 201, 'auf dem freigeräumten Platz lässt sich neu pflanzen');
 });

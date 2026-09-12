@@ -174,10 +174,9 @@ router.post('/harvest', requireAuth, (req, res, next) => {
     const me = refillWater(req.user, lat, lng);
 
     const plant = db
-      .prepare('SELECT * FROM plants WHERE id = ? AND harvested_at IS NULL')
+      .prepare('SELECT p.*, u.name AS owner_name FROM plants p JOIN users u ON u.id = p.owner_id WHERE p.id = ? AND p.harvested_at IS NULL')
       .get(Number(req.body?.plantId));
     if (!plant) throw fail(404, 'Diese Pflanze gibt es nicht mehr.');
-    if (plant.owner_id !== me.id) throw fail(403, 'Das ist nicht deine Pflanze.');
 
     const dist = distance(lat, lng, plant.lat, plant.lng);
     if (dist > REACH_M) {
@@ -188,6 +187,12 @@ router.post('/harvest', requireAuth, (req, res, next) => {
     const state = plantState(plant, now, growthBonusAt(plant.lat, plant.lng));
     const species = SPECIES[plant.species];
 
+    // Ernten darf nur, wer gepflanzt hat. Verwelktes darf jeder wegräumen --
+    // sonst blockiert eine verlassene Pflanze den Platz für alle dauerhaft.
+    if (plant.owner_id !== me.id && !state.withered) {
+      throw fail(403, 'Das ist nicht deine Pflanze.');
+    }
+
     // Erst pruefen, dann abraeumen -- ein verfruehter Erntversuch darf die
     // Pflanze nicht vernichten.
     if (!state.ready && !state.withered) {
@@ -196,10 +201,14 @@ router.post('/harvest', requireAuth, (req, res, next) => {
     db.prepare('UPDATE plants SET harvested_at = ? WHERE id = ?').run(now, plant.id);
 
     if (state.withered) {
+      const fremd = plant.owner_id !== me.id;
+      if (fremd) grantXp(me.id, 3); // kleine Anerkennung fürs Aufräumen
       res.json({
         ok: true,
         withered: true,
-        message: 'Die verwelkte Pflanze wurde entfernt. Der Platz ist wieder frei.',
+        message: fremd
+          ? `Du hast ${plant.owner_name}s verwelkte Pflanze entfernt. Der Platz ist wieder frei. +3 XP`
+          : 'Die verwelkte Pflanze wurde entfernt. Der Platz ist wieder frei.',
         me: publicUser(db.prepare('SELECT * FROM users WHERE id = ?').get(me.id)),
       });
       return;
