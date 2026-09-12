@@ -114,8 +114,9 @@ Browser geben Kamera und Kompass nur über HTTPS frei (Ausnahme: `localhost`). F
 Test im eigenen WLAN erzeugt das Projekt ein Zertifikat:
 
 ```bash
-npm run cert     # einmalig, legt data/cert.pem und data/key.pem an
-npm start
+docker compose up -d db    # Datenbank, falls noch nicht gestartet
+npm run cert               # einmalig, legt data/cert.pem und data/key.pem an
+DATABASE_URL=postgres://forest:forest@localhost:5432/forest npm start
 ```
 
 Der Server schaltet automatisch auf HTTPS um, sobald die Dateien da sind, und gibt die
@@ -257,7 +258,8 @@ Besitz werden serverseitig geprüft — sonst könnte man sich per Browser-Konso
 Rose ins Wohnzimmer pflanzen.
 
 **Kein Build-Schritt.** Das Frontend besteht aus ES-Modulen, die der Browser direkt
-lädt. Keine Bundler-Konfiguration, kein Kompilieren — `npm start` genügt.
+lädt. Keine Bundler-Konfiguration, kein Kompilieren, kein Übersetzungslauf vor dem
+Start — geändertes Frontend heißt: Seite neu laden.
 
 **PostgreSQL, nicht SQLite.** Angefangen hatte das Projekt mit einer
 SQLite-Datei — bequem, aber sie lebt im Dateisystem des Containers, und das ist
