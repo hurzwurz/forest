@@ -38,7 +38,7 @@ export function signToken(user) {
 }
 
 /** Startausstattung eines neuen Spielers. */
-const STARTER_SEEDS = { gaensebluemchen: 5, tulpe: 2 };
+const STARTER_SEEDS = { feldhanf: 5, ruderalis: 2 };
 
 export async function createUser(name, password) {
   const clean = String(name ?? '').trim();

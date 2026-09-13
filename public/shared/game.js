@@ -29,39 +29,40 @@ const HOUR = 3600_000;
 /* ------------------------------------------------------------------ Arten */
 
 export const SPECIES = {
-  gaensebluemchen: {
-    name: 'Gänseblümchen',
-    emoji: '🌼',
-    growthH: 1,        // Stunden bis zur Bluete (bei guter Pflege)
+  feldhanf: {
+    name: 'Feldhanf',
+    emoji: '🌾',
+    growthH: 1,        // Stunden bis zur Ernte (bei guter Pflege)
     seedCost: 1,
     yieldSeeds: 2,
     yieldCoins: 5,
     xp: 10,
     soil: ['karg', 'normal', 'fruchtbar'],
   },
-  tulpe: {
-    name: 'Tulpe',
-    emoji: '🌷',
+  ruderalis: {
+    name: 'Ruderalis',
+    emoji: '🍃',
     growthH: 3,
     seedCost: 1,
     yieldSeeds: 2,
     yieldCoins: 14,
     xp: 25,
-    soil: ['normal', 'fruchtbar'],
+    // Die wilde, zaehe Unterart -- kommt auch mit magerem Boden zurecht.
+    soil: ['karg', 'normal'],
   },
-  sonnenblume: {
-    name: 'Sonnenblume',
-    emoji: '🌻',
+  indica: {
+    name: 'Indica',
+    emoji: '🌿',
     growthH: 8,
     seedCost: 2,
     yieldSeeds: 3,
     yieldCoins: 45,
     xp: 70,
-    soil: ['fruchtbar'],
+    soil: ['normal', 'fruchtbar'],
   },
-  rose: {
-    name: 'Rose',
-    emoji: '🌹',
+  sativa: {
+    name: 'Sativa',
+    emoji: '🌳',   // die hochwachsende Sorte -- und grün statt herbstlich
     growthH: 14,
     seedCost: 3,
     yieldSeeds: 3,
@@ -75,8 +76,8 @@ export const SPECIES = {
 export const STAGES = [
   { key: 'samen', name: 'Samen', at: 0, emoji: '🌰' },
   { key: 'keimling', name: 'Keimling', at: 0.25, emoji: '🌱' },
-  { key: 'knospe', name: 'Knospe', at: 0.6, emoji: '🌿' },
-  { key: 'bluete', name: 'Blüte', at: 1, emoji: null }, // nutzt Arten-Emoji
+  { key: 'vegetativ', name: 'Wachstumsphase', at: 0.6, emoji: '🌱' },
+  { key: 'reif', name: 'Erntereif', at: 1, emoji: null }, // nutzt Arten-Emoji
 ];
 
 /* --------------------------------------------------------------- Gebaeude */
@@ -96,13 +97,14 @@ export const BUILDINGS = {
     effectRadiusM: 80,
     desc: 'Füllt deine Gießkanne automatisch auf, wenn du in der Nähe bist.',
   },
-  bienenstock: {
-    name: 'Bienenstock',
-    emoji: '🐝',
+  komposter: {
+    name: 'Komposter',
+    emoji: '♻️',
     coinCost: 150,
     effectRadiusM: 60,
     growthBonus: 0.25,       // 25 % schnelleres Wachstum im Umkreis
-    desc: 'Beschleunigt das Wachstum aller Pflanzen im Umkreis um 25 %.',
+    desc: 'Beschleunigt das Wachstum aller Pflanzen im Umkreis um 25 % '
+      + 'und bringt bei der Ernte einen Samen extra.',
   },
   schuppen: {
     name: 'Schuppen',
@@ -178,10 +180,10 @@ export function spotsInRadius(lat, lng, radiusM) {
 /**
  * Nach so vielen Stunden ohne Wasser stoppt das Wachstum.
  *
- * Bewusst kürzer als die Reifezeit jeder Sorte ab der Tulpe: Beim Pflanzen
- * zählt die Blume als frisch gegossen, und wäre dieses Fenster länger als die
- * Reifezeit, blühte sie ohne einen einzigen Gießvorgang auf -- das Gießen wäre
- * im frühen Spiel wirkungslos.
+ * Bewusst kürzer als die Reifezeit jeder Sorte ab Ruderalis: Beim Pflanzen
+ * zählt die Pflanze als frisch gegossen, und wäre dieses Fenster länger als die
+ * Reifezeit, wäre sie ohne einen einzigen Gießvorgang erntereif -- das Gießen
+ * wäre im frühen Spiel wirkungslos.
  */
 export const THIRSTY_AFTER_H = 2;
 /** Nach so vielen Stunden ohne Wasser verwelkt die Pflanze. */

@@ -1,13 +1,17 @@
-# 🌱 Forest
+# 🌿 Forest
 
-Pflanze Blumen an echten Orten und sieh sie durch die Kamera deines Handys wachsen.
+Bau deine Pflanzen an echten Orten an und sieh sie durch die Kamera deines Handys
+wachsen.
 
-Forest funktioniert wie Pokémon Go, nur mit Garten statt Monstern: Du siehst die
-echte Welt durch die Kamera, darüber liegen die Pflanzplätze in deiner Umgebung.
-Was du pflanzt, bleibt an diesem Ort liegen.
+Forest funktioniert wie Pokémon Go, nur mit Hanfgarten statt Monstern: Du siehst
+die echte Welt durch die Kamera, darüber liegen die Pflanzplätze in deiner
+Umgebung. Was du anbaust, bleibt an diesem Ort liegen.
+
+Alles daran ist Spiel — gepflanzt, gegossen und geerntet wird ausschließlich
+virtuell.
 
 **Zwei Betriebsarten, eine App.** Findet die App beim Start einen Server, spielen
-alle in derselben Welt: Du siehst fremde Blumen, andere deine, und Gießen bringt
+alle in derselben Welt: Du siehst fremde Pflanzen, andere deine, und Gießen bringt
 Erfahrung. Findet sie keinen — etwa auf GitHub Pages —, schaltet sie von selbst in
 den Offline-Betrieb und rechnet im Browser. Dann gehört der Garten dir allein und
 liegt auf deinem Gerät. Umzustellen ist dafür nichts.
@@ -61,36 +65,39 @@ Jeder Platz hat einen Bodentyp, der bestimmt, was dort wächst:
 
 | Boden | Anteil | Was wächst hier |
 |---|---|---|
-| karg | 50 % | Gänseblümchen |
-| normal | 35 % | Gänseblümchen, Tulpe |
-| fruchtbar | 15 % | alles, auch Sonnenblume und Rose |
+| karg | 50 % | Feldhanf, Ruderalis |
+| normal | 35 % | Feldhanf, Ruderalis, Indica |
+| fruchtbar | 15 % | alles, auch Sativa |
 
 ### Pflanzen und Wachsen
 
-| Blume | Reifezeit | Samen | Ertrag | XP |
+| Sorte | Reifezeit | Samen | Ertrag | XP |
 |---|---|---|---|---|
-| 🌼 Gänseblümchen | 1 Std. | 1 | 2 Samen, 5 Münzen | 10 |
-| 🌷 Tulpe | 3 Std. | 1 | 2 Samen, 14 Münzen | 25 |
-| 🌻 Sonnenblume | 8 Std. | 2 | 3 Samen, 45 Münzen | 70 |
-| 🌹 Rose | 14 Std. | 3 | 3 Samen, 90 Münzen | 140 |
+| 🌾 Feldhanf | 1 Std. | 1 | 2 Samen, 5 Münzen | 10 |
+| 🍃 Ruderalis | 3 Std. | 1 | 2 Samen, 14 Münzen | 25 |
+| 🌿 Indica | 8 Std. | 2 | 3 Samen, 45 Münzen | 70 |
+| 🍁 Sativa | 14 Std. | 3 | 3 Samen, 90 Münzen | 140 |
+
+Die Zuordnung folgt lose der Botanik: Feldhanf ist genügsam, Ruderalis die zähe
+Wildform, Sativa die anspruchsvollste — und die lohnendste.
 
 Pflanzen wachsen **nur, wenn sie Wasser haben**. Nach dem Gießen läuft die
 Wachstumsuhr 2 Stunden lang; danach steht sie still, bis wieder gegossen wird —
-erreichter Fortschritt geht dabei nie verloren. Eine Sonnenblume braucht deshalb
-vier Besuche, eine Rose sieben. Nur das Gänseblümchen blüht schon vom Gießen beim
-Pflanzen auf.
+erreichter Fortschritt geht dabei nie verloren. Eine Indica braucht deshalb vier
+Besuche, eine Sativa sieben. Nur der Feldhanf wird schon vom Gießen beim Pflanzen
+erntereif.
 
-Nach 48 Stunden ohne Wasser verwelkt eine noch nicht aufgeblühte Pflanze. Aufgeräumt
+Nach 48 Stunden ohne Wasser verdorrt eine noch nicht erntereife Pflanze. Aufgeräumt
 werden darf sie dann von **jedem** — sonst würde eine verlassene Pflanze den Platz für
-alle dauerhaft blockieren. Wer fremdes Verwelktes entfernt, bekommt 3 XP. Eine
-aufgeblühte Blume verwelkt nicht; sie wartet auf ihren Besitzer.
+alle dauerhaft blockieren. Wer fremdes Verdorrtes entfernt, bekommt 3 XP. Eine
+erntereife Pflanze verdorrt nicht; sie wartet auf ihren Besitzer.
 
 Deine Gießkanne füllt sich von selbst auf: eine Einheit alle 10 Minuten.
 
 ### Miteinander statt gegeneinander
 
 Fremde Pflanzen darfst du gießen — das gibt **8 XP pro Pflanze**, allerdings nur beim
-ersten Mal, damit sich dieselbe Blume nicht endlos abmelken lässt. Ernten darf nur,
+ersten Mal, damit sich dieselbe Pflanze nicht endlos abmelken lässt. Ernten darf nur,
 wer gepflanzt hat.
 
 ### Bauen
@@ -103,7 +110,7 @@ stehst, und es bildet die Mitte deines Grundstücks. Alles Weitere muss innerhal
 |---|---|---|
 | 🏡 Gewächshaus | gratis | Hauptheim, genau eines pro Spieler |
 | ⛲ Brunnen | 60 🪙 | Füllt die Gießkanne sofort, im Umkreis von 80 m |
-| 🐝 Bienenstock | 150 🪙 | 25 % schnelleres Wachstum im Umkreis von 60 m, plus ein Samen bei der Ernte |
+| ♻️ Komposter | 150 🪙 | 25 % schnelleres Wachstum im Umkreis von 60 m, plus ein Samen bei der Ernte |
 | 🛖 Schuppen | 100 🪙 | Gießkanne fasst 5 Einheiten mehr |
 
 ### Reichweite
@@ -169,7 +176,7 @@ nicht — dafür braucht es den Server unten.
 
 Beides schließt sich nicht aus: Dieselbe Fassung läuft auf Pages offline und
 hinter einem Server gemeinsam. Die Spielregeln liegen in `public/shared/` und
-werden von beiden Seiten benutzt, damit eine Blume nicht je nach Betriebsart
+werden von beiden Seiten benutzt, damit eine Pflanze nicht je nach Betriebsart
 unterschiedlich schnell wächst.
 
 ---
@@ -295,7 +302,7 @@ render.yaml        Render-Blueprint
 **Alle Spielentscheidungen fallen auf dem Server.** Der Client schickt seine
 Koordinaten und bekommt zurück, was er anzeigen darf. Entfernung, Bodentyp, Kosten und
 Besitz werden serverseitig geprüft — sonst könnte man sich per Browser-Konsole eine
-Rose ins Wohnzimmer pflanzen.
+Sativa ins Wohnzimmer setzen.
 
 **Kein Build-Schritt.** Das Frontend besteht aus ES-Modulen, die der Browser direkt
 lädt. Keine Bundler-Konfiguration, kein Kompilieren, kein Übersetzungslauf vor dem
@@ -352,7 +359,7 @@ Das Spiel ist vollständig spielbar, aber ein paar Dinge lohnen sich als Nächst
 - **Jahreszeiten und Wetter** — bei Regen bräuchte man nicht zu gießen.
 - **Nachbarschaften**: Wer viel im selben Viertel pflanzt, könnte gemeinsame Ziele
   bekommen.
-- **Mehr Sorten**, etwa seltene Blumen, die nur zu bestimmten Tageszeiten aufgehen.
+- **Mehr Sorten**, etwa seltene Kreuzungen, die nur unter bestimmten Bedingungen anwachsen.
 - **Betrieb**: Für echten Mehrspielerbetrieb gehören Ratenbegrenzung und
   TLS-Terminierung vor den Prozess (nginx, Caddy). Die Weltabfrage filtert
   Pflanzen und Gebäude noch über ein Koordinatenfenster; bei vielen Spielern

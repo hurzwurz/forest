@@ -58,10 +58,10 @@ export async function nearbyBuildings(lat, lng, radiusM, kind = null) {
     .filter((b) => b.distance <= radiusM);
 }
 
-/** Wachstumsbonus an einem Ort durch Bienenstöcke (nicht kumulativ). */
+/** Wachstumsbonus an einem Ort durch Komposter (nicht kumulativ). */
 export async function growthBonusAt(lat, lng) {
-  const hives = await nearbyBuildings(lat, lng, BUILDINGS.bienenstock.effectRadiusM, 'bienenstock');
-  return hives.length ? BUILDINGS.bienenstock.growthBonus : 0;
+  const komposter = await nearbyBuildings(lat, lng, BUILDINGS.komposter.effectRadiusM, 'komposter');
+  return komposter.length ? BUILDINGS.komposter.growthBonus : 0;
 }
 
 /* ------------------------------------------------------------- Inventar */
