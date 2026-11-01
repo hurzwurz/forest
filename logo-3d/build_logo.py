@@ -20,8 +20,8 @@ UPSCALE = 4           # für glattere Konturen
 THRESH = 115          # Grauwert-Schwelle: dunkler = Logo
 MARGIN_PX = 40        # Rand um das Logo (Originalpixel)
 CORNER_R = 5.0        # Eckenradius Platte
-PLATE_H = 4.0         # Dicke der Grundplatte
-LOGO_H = 3.0          # Höhe des erhabenen Logos
+PLATE_H = 5.0         # Dicke der Grundplatte
+LOGO_H = 5.0          # Höhe des erhabenen Logos
 BOLD_MM = 0.12        # Buchstaben um diesen Wert fetter machen (Konturversatz)
 MIN_AREA_MM2 = 0.05   # Störpixel ignorieren
 
