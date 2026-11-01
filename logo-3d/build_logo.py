@@ -134,3 +134,61 @@ bpy.ops.wm.save_as_mainfile(filepath=os.path.join(out, "457_logo.blend"))
 
 print(f"Platte: {w:.1f} x {h:.1f} x {PLATE_H} mm, Logo +{LOGO_H} mm")
 print("watertight:", plate_mesh.is_watertight, logo_mesh.is_watertight, combined.is_watertight)
+
+# ---- 4. OrcaSlicer/Bambu-Projekt: ein Objekt, 2 Teile, Filament 1 + 2 ------
+import zipfile
+
+def mesh_xml(oid, name, tm):
+    v = "\n".join(f'<vertex x="{x:.4f}" y="{y:.4f}" z="{z:.4f}"/>' for x, y, z in tm.vertices)
+    t = "\n".join(f'<triangle v1="{a}" v2="{b}" v3="{c}"/>' for a, b, c in tm.faces)
+    return (f'<object id="{oid}" name="{name}" type="model"><mesh><vertices>\n{v}\n'
+            f'</vertices><triangles>\n{t}\n</triangles></mesh></object>')
+
+# Objekt auf ein 256er-Bett mittig legen
+off = np.array([128.0, 128.0, 0.0])
+p_m, l_m = plate_mesh.copy(), logo_mesh.copy()
+p_m.apply_translation(off); l_m.apply_translation(off)
+model = f'''<?xml version="1.0" encoding="UTF-8"?>
+<model unit="millimeter" xml:lang="en-US" xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02">
+<metadata name="Application">BambuStudio-01.09.00.00</metadata>
+<metadata name="BambuStudio:3mfVersion">1</metadata>
+<metadata name="Title">457 Rooftop Events Logo</metadata>
+<resources>
+{mesh_xml(1, "Platte", p_m)}
+{mesh_xml(2, "Logo", l_m)}
+<object id="3" name="457 Logo" type="model"><components>
+<component objectid="1"/><component objectid="2"/></components></object>
+</resources>
+<build><item objectid="3" printable="1"/></build>
+</model>'''
+settings = '''<?xml version="1.0" encoding="UTF-8"?>
+<config>
+  <object id="3">
+    <metadata key="name" value="457 Logo"/>
+    <metadata key="extruder" value="1"/>
+    <part id="1" subtype="normal_part">
+      <metadata key="name" value="Platte (rosa)"/>
+      <metadata key="extruder" value="1"/>
+    </part>
+    <part id="2" subtype="normal_part">
+      <metadata key="name" value="Logo (schwarz)"/>
+      <metadata key="extruder" value="2"/>
+    </part>
+  </object>
+</config>'''
+ctypes = '''<?xml version="1.0" encoding="UTF-8"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+<Default Extension="model" ContentType="application/vnd.ms-package.3dmanufacturing-3dmodel+xml"/>
+<Default Extension="config" ContentType="text/xml"/>
+</Types>'''
+rels = '''<?xml version="1.0" encoding="UTF-8"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+<Relationship Target="/3D/3dmodel.model" Id="rel-1" Type="http://schemas.microsoft.com/3dmanufacturing/2013/01/3dmodel"/>
+</Relationships>'''
+with zipfile.ZipFile(os.path.join(out, "457_orca.3mf"), "w", zipfile.ZIP_DEFLATED) as z:
+    z.writestr("[Content_Types].xml", ctypes)
+    z.writestr("_rels/.rels", rels)
+    z.writestr("3D/3dmodel.model", model)
+    z.writestr("Metadata/model_settings.config", settings)
+print("457_orca.3mf geschrieben")
