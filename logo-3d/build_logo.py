@@ -20,8 +20,9 @@ UPSCALE = 4           # für glattere Konturen
 THRESH = 115          # Grauwert-Schwelle: dunkler = Logo
 MARGIN_PX = 40        # Rand um das Logo (Originalpixel)
 CORNER_R = 5.0        # Eckenradius Platte
-PLATE_H = 2.4         # Dicke der Grundplatte
-LOGO_H = 1.2          # Höhe des erhabenen Logos
+PLATE_H = 4.0         # Dicke der Grundplatte
+LOGO_H = 3.0          # Höhe des erhabenen Logos
+BOLD_MM = 0.12        # Buchstaben um diesen Wert fetter machen (Konturversatz)
 MIN_AREA_MM2 = 0.05   # Störpixel ignorieren
 
 # ---- 1. Bild vektorisieren -----------------------------------------------
@@ -53,6 +54,8 @@ for i, c in enumerate(contours):
     if p.area >= MIN_AREA_MM2:
         polys.append(p)
 logo = unary_union(polys)
+if BOLD_MM:
+    logo = logo.buffer(BOLD_MM, quad_segs=8, join_style="round")
 
 # Logo so verschieben, dass die Platte bei (0,0) zentriert ist
 ys, xs = np.where(img < THRESH)

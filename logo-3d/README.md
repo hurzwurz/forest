@@ -10,10 +10,10 @@ Aus `logo.jpg` vektorisiert und als Relief-Schild aufgebaut:
 | `457_mehrfarbig.3mf` | Beide Teile zusammen in einer Datei (z. B. Bambu/Prusa/Orca: als ein Objekt mit zwei Teilen laden, Farben zuweisen) |
 | `build_logo.py` | Skript zum Neuerzeugen (Maße oben im Skript anpassbar) |
 
-**Maße:** Platte 90,4 × 189,9 × 2,4 mm, Logo 1,2 mm erhaben (Gesamthöhe 3,6 mm).
+**Maße:** Platte 90,4 × 189,9 × 4,0 mm, Logo 3,0 mm erhaben (Gesamthöhe 7,0 mm). Konturen um 0,12 mm verdickt (`BOLD_MM`).
 
 **Zweifarbig ohne Mehrfarbdrucker:** `457_komplett.stl` flach drucken und bei
-2,4 mm Höhe einen Filamentwechsel (rosa → schwarz) einfügen.
+4,0 mm Höhe einen Filamentwechsel (rosa → schwarz) einfügen.
 
-Hinweis: Die Adresszeile ist recht klein (Strichstärke ca. 0,6 mm) – mit 0,4-mm-Düse
+Hinweis: Die Adresszeile ist recht klein (Strichstärke ca. 0,8 mm) – mit 0,4-mm-Düse
 druckbar, für bessere Lesbarkeit `MM_PER_PX` im Skript erhöhen.
