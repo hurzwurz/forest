@@ -5,6 +5,8 @@ Dual-Drive-Zahnräder (Zahnkranz plus gerändelte Stahlscheibe mit Lager).
 
 ![Zusammenbau](vorschau.png)
 
+![Die Teile einzeln](teile.png)
+
 Das Modell `extruder.scad` ist parametrisch. Bevor du druckst, trägst du die Maße
 deiner Zahnräder ein (siehe [Messen](#1-messen)).
 
