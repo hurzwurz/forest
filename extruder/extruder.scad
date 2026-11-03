@@ -1,7 +1,14 @@
-// Direktextruder mit 28BYJ-48 und Dual-Drive-Zahnrädern
-// =====================================================
+// Direktextruder / Filament-Zufuhr mit 28BYJ-48 und Dual-Drive-Zahnrädern
+// =======================================================================
 //
 // Parametrisches OpenSCAD-Modell. Alle Maße in mm.
+//
+// Zwei Bauformen (Parameter "bauform"):
+//   "extruder" - Direktextruder auf dem Hotend, Ritzel untersetzt, Feder
+//                drückt Rad B an.
+//   "wechsler" - Zufuhr für den Filamentwechsler: Ritzel 1 : 1, PC4-M10-
+//                Steckanschlüsse oben und unten, ein Servo drückt Rad B nur
+//                während des Wechsels an. Siehe WECHSLER.md.
 //
 // Aufbau (Blick von vorn, Filament läuft von oben nach unten):
 //
@@ -28,6 +35,8 @@
 /* [Ausgabe] */
 // Welches Teil rendern? "alle" zeigt den Zusammenbau.
 teil = "alle"; // ["alle", "gehaeuse", "hebel", "ritzel", "plan"]
+// Direktextruder oder Zufuhr für den Filamentwechsler
+bauform = "wechsler"; // ["extruder", "wechsler"]
 
 /* [MESSEN: Antriebsräder] */
 // Zähne am schwarzen Zahnkranz eines Antriebsrads (zählen!)
@@ -44,7 +53,8 @@ rad_raendel_d = 14.5;
 achse_d = 3.0;
 
 /* [Ritzel auf der Motorwelle] */
-// 0 = automatisch: kleinstes Ritzel, das noch auf die 5-mm-Welle passt
+// 0 = automatisch: beim Extruder das kleinste Ritzel, das noch auf die
+// 5-mm-Welle passt; beim Wechsler gleich viele Zähne wie das Rad (1 : 1)
 ritzel_zaehne = 0;
 // Spiel zwischen den Zähnen (größer = leichtgängiger)
 zahnspiel = 0.10;
@@ -73,9 +83,12 @@ motor_richtung = 180;
 rueckwand = 4.0;
 vorderwand = 4.0;
 filament_d = 1.75;
-// Bohrung für PTFE-Schlauch oben (Einlauf) und unten (zum Hotend)
-ptfe_d = 4.15;
-ptfe_tiefe = 6.0;
+// Extruder: Bohrung für PTFE-Schlauch oben (Einlauf) und unten (zum Hotend)
+ptfe_d_extruder = 4.15;
+ptfe_tiefe_extruder = 6.0;
+// Wechsler: Kernloch für PC4-M10-Steckkupplungen (schneiden ihr Gewinde selbst)
+kupplung_d = 8.5;
+kupplung_tiefe = 7.0;
 // Befestigung unten: zwei M3-Löcher, Abstand
 befestigung_abstand = 20.0;
 befestigung_loch_d = 2.8;
@@ -84,6 +97,21 @@ schraube_d = 3.3;
 mutter_sw = 5.7;
 mutter_h = 2.6;
 spiel = 0.4;
+
+/* [Wechsler: Servo SG90 / MG90S] */
+// Körper ohne Laschen
+servo_l = 22.8;
+servo_b = 12.4;
+servo_h = 22.7;
+// Abstand der beiden Schraublöcher in den Laschen
+servo_laschen_abstand = 27.8;
+servo_schraube_d = 1.8;
+// Wellenmitte bis zum näheren Körperende
+servo_welle_versatz = 5.9;
+// Wellenseite des Körpers bis Unterseite der Laschen (MESSEN)
+servo_oben_bis_lasche = 6.0;
+// Abstand Servowelle bis Druckpunkt am Spannhebel
+servo_hebel_r = 10.0;
 
 $fn = 64;
 
@@ -97,7 +125,10 @@ achsabstand_ab = rad_teil_d;                 // A und B kämmen miteinander
 
 // kleinstes Ritzel, dessen Fußkreis noch 1,2 mm Wand um die Welle lässt
 ritzel_z_auto = ceil((welle_d + 2 * 1.2) / modul + 2.5);
-ritzel_z = ritzel_zaehne > 0 ? ritzel_zaehne : ritzel_z_auto;
+wechsler = bauform == "wechsler";
+ritzel_z = ritzel_zaehne > 0 ? ritzel_zaehne : (wechsler ? rad_zaehne : ritzel_z_auto);
+ptfe_d = wechsler ? kupplung_d : ptfe_d_extruder;
+ptfe_tiefe = wechsler ? kupplung_tiefe : ptfe_tiefe_extruder;
 ritzel_aussen_d = modul * (ritzel_z + 2);
 achsabstand_ritzel = modul * (rad_zaehne + ritzel_z) / 2;
 
@@ -126,7 +157,7 @@ rad_r = rad_aussen_d / 2;
 feder_z = rad_r + 6;                         // Höhe der Federschraube
 feder_y = tiefe - 4.0;                       // vorn, weit weg vom Filament
 drehpunkt = [pos_b.x + 3.0, -(rad_r + 6)];   // Hebel-Drehpunkt
-sockel_h = 6;                                // Sockel unten
+sockel_h = max(6, ptfe_tiefe + 2);           // Sockel unten
 oben = feder_z + 5.5 + ptfe_tiefe + 1.5;     // Oberkante
 unten = drehpunkt.y - 4.5 - 1.0 - sockel_h;  // Unterkante
 x_frei = 2.2;                                // rechte Kante des Blocks am Filament
@@ -134,7 +165,20 @@ hebel_x0 = x_frei + 0.8;                     // linke Kante des Hebels
 hebel_spalt = 0.6;
 // Spalt zwischen den Rändelscheiben; muss kleiner als das Filament sein
 raendel_spalt = achsabstand_ab - rad_raendel_d;
+// rechte Kante des Blocks oberhalb des Hebels (trägt den Einlauf)
+x_oben = max(6, ptfe_d / 2 + 3);
 
+// Servo (nur Wechsler): Welle zeigt nach hinten, der Servohebel drückt in
+// der Ebene servo_horn_y von rechts gegen den Kopf des Spannhebels.
+servo_horn_y = 4.0;
+servo_oben_y = servo_horn_y + 4.5;                       // Wellenseite des Körpers
+servo_platte_y = servo_oben_y + servo_oben_bis_lasche;   // Auflage der Laschen
+pos_servo = [pos_b.x + rad_r + servo_hebel_r + 1, feder_z];
+servo_mitte_z = pos_servo.y - servo_welle_versatz + servo_l / 2;
+servo_platte = [pos_servo.x - servo_b / 2 - 3.3, servo_mitte_z - servo_laschen_abstand / 2 - 3.5,
+                pos_servo.x + servo_b / 2 + 3.3, servo_mitte_z + servo_laschen_abstand / 2 + 3.5];
+
+echo(str("Bauform: ", bauform));
 echo(str("Modul: ", modul, " mm"));
 echo(str("Ritzel: ", ritzel_z, " Zähne, Außen-Ø ", ritzel_aussen_d, " mm"));
 echo(str("Untersetzung Ritzel -> Rad: ", untersetzung, " : 1"));
@@ -208,6 +252,9 @@ module umriss_rueckwand() {
         translate(pos_lasche2) circle(d = motor_laschen_loch_d + 6);
         translate(pos_ritzel) circle(d = motor_bund_d + 6);
         translate([pos_a.x - rad_r - 3, unten]) square([pos_b.x + rad_r + 9 - (pos_a.x - rad_r - 3), oben - unten]);
+        if (wechsler)
+            translate([servo_platte[0], servo_platte[1]])
+                square([servo_platte[2] - servo_platte[0], servo_platte[3] - servo_platte[1]]);
     }
 }
 
@@ -217,7 +264,7 @@ module umriss_block() {
         translate(pos_a) circle(r = rad_r + 3);
         translate(pos_ritzel) circle(d = ritzel_aussen_d + 5);
         translate([pos_a.x - rad_r - 3, unten]) square([rad_r + 3 + achsabstand_ab / 2 + 4, 1]);
-        translate([pos_a.x - rad_r - 3, oben - 1]) square([rad_r + 3 + 6, 1]);
+        translate([pos_a.x - rad_r - 3, oben - 1]) square([x_oben - (pos_a.x - rad_r - 3), 1]);
     }
 }
 
@@ -228,12 +275,12 @@ module gehaeuse() {
             platte_y(-rueckwand, rueckwand) umriss_rueckwand();
             // Block vor der Rückwand
             platte_y(0, tiefe) umriss_block();
-            // Steg oben rechts, durch den die Federschraube läuft
             // Sockel unten (Befestigung am Hotend/Schlitten), volle Breite
             platte_y(-rueckwand, tiefe + rueckwand)
                 translate([pos_a.x - rad_r - 3, unten]) square([pos_b.x + rad_r + 9 - (pos_a.x - rad_r - 3), sockel_h]);
             // Lagerbock für den Hebel-Drehpunkt
             zyl_y(drehpunkt, 8, 0, 1.0);
+            if (wechsler) servo_halter();
         }
 
         // Kammer für Rad A und B (seitlich nach rechts offen zum Einsetzen)
@@ -268,6 +315,40 @@ module gehaeuse() {
         // Ø4 für Einschmelzmuttern -> befestigung_loch_d anpassen
         for (sx = [-1, 1]) translate([sx * befestigung_abstand / 2, filament_y, unten - 1])
             cylinder(d = befestigung_loch_d, h = sockel_h);
+        if (wechsler) servo_ausschnitt();
+    }
+}
+
+// Halteplatte für den Servo: parallel zur Rückwand, oben und rechts mit
+// Stegen an der Rückwand. Links bleibt frei, dort schwenkt der Servohebel.
+module servo_halter() {
+    x0 = servo_platte[0]; z0 = servo_platte[1]; x1 = servo_platte[2]; z1 = servo_platte[3];
+    translate([x0, servo_platte_y - 3, z0]) cube([x1 - x0, 3, z1 - z0]);
+    // rechter Steg erst hinter der Ebene des Servohebels, damit er frei schwenkt
+    translate([x1 - 3, servo_horn_y + 1.5, z0]) cube([3, servo_platte_y - servo_horn_y - 1.5, z1 - z0]);
+    translate([x0, 0, z1 - 3]) cube([x1 - x0, servo_platte_y, 3]);
+}
+
+module servo_ausschnitt() {
+    // Fenster für den Körper, Servo wird von vorn mit der Welle voran eingesetzt
+    translate([pos_servo.x - servo_b / 2 - 0.3, servo_platte_y - 4, servo_mitte_z - servo_l / 2 - 0.3])
+        cube([servo_b + 0.6, 5, servo_l + 0.6]);
+    for (dz = [-1, 1])
+        translate([pos_servo.x, servo_platte_y - 5, servo_mitte_z + dz * servo_laschen_abstand / 2])
+            rotate([-90, 0, 0]) cylinder(d = servo_schraube_d, h = 6);
+}
+
+module servo_attrappe() {
+    color("steelblue") {
+        translate([pos_servo.x - servo_b / 2, servo_oben_y, servo_mitte_z - servo_l / 2])
+            cube([servo_b, servo_h, servo_l]);
+        translate([pos_servo.x - servo_b / 2, servo_platte_y, servo_mitte_z - servo_laschen_abstand / 2 - 2.5])
+            cube([servo_b, 2.5, servo_laschen_abstand + 5]);
+    }
+    // Servohebel in Druckstellung (waagrecht nach links)
+    color("white") hull() {
+        zyl_y(pos_servo, 7, servo_horn_y - 0.8, 1.6);
+        zyl_y([pos_servo.x - servo_hebel_r, pos_servo.y], 4, servo_horn_y - 0.8, 1.6);
     }
 }
 
@@ -331,6 +412,7 @@ module zusammenbau() {
     rad_attrappe(pos_a);
     rad_attrappe(pos_b);
     motor_attrappe();
+    if (wechsler) servo_attrappe();
     color("white") translate([0, filament_y, unten - 10]) cylinder(d = filament_d, h = oben - unten + 20);
 }
 

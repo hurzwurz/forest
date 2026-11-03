@@ -10,6 +10,11 @@ Dual-Drive-Zahnräder (Zahnkranz plus gerändelte Stahlscheibe mit Lager).
 Das Modell `extruder.scad` ist parametrisch. Bevor du druckst, trägst du die Maße
 deiner Zahnräder ein (siehe [Messen](#1-messen)).
 
+> **Filamentwechsler:** Dieselbe Einheit gibt es als Zufuhr für einen
+> Filamentwechsler am Ender 3 mit Klipper, siehe **[WECHSLER.md](WECHSLER.md)**.
+> Im Modell wählst du die Bauform oben mit `bauform = "extruder"` oder
+> `bauform = "wechsler"`. Voreingestellt ist `"wechsler"`.
+
 ---
 
 ## Was du erwarten kannst
@@ -90,7 +95,8 @@ Laschenlöcher 35 mm auseinander liegen und wie weit die Welle herausragt
 
 ## 2. Drucken
 
-Stell oben im Modell `teil` auf `gehaeuse`, `hebel` oder `ritzel`. Drück dann F6
+Stell oben im Modell `bauform` auf `"extruder"` und `teil` auf `gehaeuse`,
+`hebel` oder `ritzel`. Drück dann F6
 und exportiere die STL. Mit `plan` liegen alle drei Teile nebeneinander.
 
 - **Material:** PETG, ABS oder ASA. PLA wird neben dem Hotend weich.
